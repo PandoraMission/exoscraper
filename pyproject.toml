@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Package to scrape data on exoplanet targets to help you build your mission."
 authors = ["Your Name <you@example.com>"]
 license = "MIT"
-readme = "README.md"
+readme = "docs/README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
