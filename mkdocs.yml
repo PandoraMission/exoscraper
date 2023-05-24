@@ -1,0 +1,17 @@
+site_name: exoscraper
+nav:
+    - Home: README.md
+theme:
+  name: "material"
+  icon:
+      logo: material/clipboard
+repo_url: https://github.com/pandoramission/exoscraper
+plugins:
+  - search
+  - mkdocs-jupyter:
+      execute: False
+      include_source: True
+      ignore_h1_titles: False
+  - mkdocstrings:
+      watch:
+        - src/exoscraper

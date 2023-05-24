@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "exoscraper"
+version = "0.1.0"
+description = "Package to scrape data on exoplanet targets to help you build your mission."
+authors = ["Your Name <you@example.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.24.3"
+astropy = "^5.3"
+
+
+[tool.poetry.group.dev.dependencies]
+mkdocs = "^1.4.3"
+jupyterlab = "^4.0.0"
+black = "^23.3.0"
+flake8 = "^6.0.0"
+isort = "^5.12.0"
+pytest = "^7.3.1"
+mkdocs-material = "^9.1.14"
+mkdocstrings = "^0.21.2"
+mkdocs-jupyter = "^0.24.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
