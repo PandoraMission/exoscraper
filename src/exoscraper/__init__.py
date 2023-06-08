@@ -9,3 +9,5 @@ import logging  # noqa: E402
 
 logging.basicConfig()
 logger = logging.getLogger("exoscraper")
+
+from .target import Target  # noqa
