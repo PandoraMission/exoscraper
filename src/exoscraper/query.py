@@ -16,7 +16,7 @@ def get_timeseries(ra: u.Quantity, dec: u.Quantity) -> lk.LightCurve:
     raise NotImplementedError
 
 @lru_cache
-def get_names(ra: u.Quantity, dec: u.Quantity) -> list:
+def get_alternate_names(ra: u.Quantity, dec: u.Quantity) -> list:
     """Function to parse and retrieve all available names for a single target from Simbad"""
 
     # query simbad catalogs for ra and dec
