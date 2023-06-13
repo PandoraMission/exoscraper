@@ -63,7 +63,7 @@ class Target(object):
         raise NotImplementedError
 
     @property
-    def noise_model(self, mission: str) -> lk.LightCurve:
+    def noise_model(self, mission: str) -> float:
         # generate noise model for target for specified mission
         # this could be wrapped into transit model
         # this also may not be worth including since I selfishly need it for
