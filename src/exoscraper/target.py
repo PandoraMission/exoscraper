@@ -43,7 +43,7 @@ class TargetSet(object):
     """A class to hold many Target classes"""
 
     def __init__(self, targets):
-        self.targets = target
+        self.targets = targets
 
     def __iter__(self):
         raise NotImplementedError
@@ -56,4 +56,8 @@ class TargetSet(object):
     
     @staticmethod
     def from_names(coords: List[str | SkyCoord]):
+        raise NotImplementedError
+    
+    def to_csv(self, output):
+        """Produces csv file with all the targets in the TargetSet """
         raise NotImplementedError
