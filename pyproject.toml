@@ -10,6 +10,7 @@ readme = "docs/README.md"
 python = "^3.9"
 numpy = "^1.24.3"
 astropy = "^5.3"
+lightkurve = "^2.4.0"
 
 
 [tool.poetry.group.dev.dependencies]

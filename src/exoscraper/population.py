@@ -2,6 +2,7 @@
 
 from pandas import DataFrame
 
+
 class Population(DataFrame):
     """Work with the exoplanet archive population?"""
 
@@ -13,11 +14,11 @@ class Population(DataFrame):
 
         # get_params(ra, dec, names, boundaries)
         raise NotImplementedError
-    
+
     # Go get the data
 
     # Some sort of plotting tools or diagnostics
-    
+
     @property
     def to_TargetSet(self):
         # converts the current population selection into a TargetSet
