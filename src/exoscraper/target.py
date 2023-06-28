@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Union
 
 import astropy.units as u
+import pandas as pd
 import lightkurve as lk
 from astropy.coordinates import SkyCoord
 
@@ -136,4 +137,25 @@ class TargetSet(object):
 
     def to_csv(self, output):
         """Produces csv file with all the targets in the TargetSet"""
+        # Initialize DataFrame to fill with Targets from TargetSet
+        targets_df = pd.DataFrame(
+            [],
+            columns=[
+                "Planet Name",
+                "Star Name",
+                "Star SkyCoord",
+                "Planet Transit Epoch (BJD_TDB-2400000.5)",
+                "Planet Transit Epoch Uncertainty",
+                "Period (day)",
+                "Period Uncertainty"
+                "Transit Duration (hrs)",
+            ],
+        )
+
+        # Pull data from TargetSet to fill DataFrame
+        # for target in targets:
+
+        # Save DataFrame to csv
+        targets_df = targets_df.sort_values(by=["Planet Name"]).reset_index(drop=True)
+        targets_df.to_csv((output), sep=",", index=False)
         raise NotImplementedError
