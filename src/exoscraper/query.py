@@ -7,14 +7,16 @@ import astropy.units as u
 import lightkurve as lk
 import numpy as np
 import pandas as pd
-from astropy.io import votable
 from astropy.constants import c as speedoflight
-from astropy.utils.data import download_file
 from astropy.coordinates import Distance, SkyCoord
+from astropy.io import votable
 from astropy.time import Time
+from astropy.utils.data import download_file
 from astroquery import log as asqlog
 from astroquery.gaia import Gaia
 from astroquery.ipac.nexsci.nasa_exoplanet_archive import NasaExoplanetArchive
+
+from . import log
 
 asqlog.setLevel("ERROR")
 
@@ -39,11 +41,19 @@ def get_SED(coord: Union[str, tuple], radius: Union[float, u.Quantity] = 2) -> d
         vizier_url = f"https://vizier.cds.unistra.fr/viz-bin/sed?-c={coord[0]},{coord[1]}&-c.rs={radius}"
     else:
         raise ValueError("`coord` must be a `string` or `tuple` object.")
+    try:
+        df = (
+            votable.parse(download_file(vizier_url, show_progress=False))
+            .get_first_table()
+            .to_table()
+        )
+    except IndexError:
+        log.warning(f"No SED photometry found for `{coord}` at Vizier.")
+        return None
 
-    df = votable.parse(download_file(vizier_url)).get_first_table().to_table()
     df = df[df["sed_flux"] / df["sed_eflux"] > 3]
     if len(df) == 0:
-        # TODO: Need a logging loud warning here that there is no SED photometry
+        log.warning(f"No SED photometry found for {coord} at Vizier.")
         return None
     wavelength = (speedoflight / (np.asarray(df["sed_freq"]) * u.GHz)).to(u.angstrom)
     sed_flux = np.asarray(df["sed_flux"]) * u.jansky

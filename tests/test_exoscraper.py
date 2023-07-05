@@ -12,6 +12,9 @@ def test_init():
     assert isinstance(t.planets, dict)
     t = Target.from_name("HAT-P-19")
     assert isinstance(t.planets, dict)
+    assert "b" in t.planets.keys()
 
-
-#    assert ('b' is in t.planets.keys)
+    # Can get SED property
+    sed = t.SED
+    assert isinstance(sed, dict)
+    assert len(sed["wavelength"]) > 0
