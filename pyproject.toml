@@ -12,6 +12,7 @@ numpy = "^1.24.3"
 astropy = "^5.3"
 lightkurve = "^2.4.0"
 rich = "^13.4.2"
+beautifulsoup4 = "^4.12.2"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -24,6 +25,7 @@ pytest = "^7.3.1"
 mkdocs-material = "^9.1.14"
 mkdocstrings = "^0.21.2"
 mkdocs-jupyter = "^0.24.1"
+lxml = "^4.9.3"
 
 [build-system]
 requires = ["poetry-core"]
