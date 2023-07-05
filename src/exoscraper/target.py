@@ -62,8 +62,11 @@ class Target(object):
         raise NotImplementedError
 
     @staticmethod
-    def from_name(coord: str):
-        raise NotImplementedError
+    def from_name(name: str):
+        if not isinstance(name, str):
+            raise ValueError("`name` must be a `string`.")
+        else:
+            return Target.from_gaia(coord=name)
 
     @property
     def lightcurve(self):

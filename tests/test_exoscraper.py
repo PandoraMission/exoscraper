@@ -10,6 +10,8 @@ def test_init():
     """Check that Target can be initialized"""
     t = Target.from_gaia("HAT-P-19")
     assert isinstance(t.planets, dict)
+    t = Target.from_name("HAT-P-19")
+    assert isinstance(t.planets, dict)
 
 
 #    assert ('b' is in t.planets.keys)
