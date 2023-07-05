@@ -135,8 +135,19 @@ class TargetSet(object):
     def from_names(coords: Union[str, SkyCoord]):
         raise NotImplementedError
 
-    def to_csv(self, output):
-        """Produces csv file with all the targets in the TargetSet"""
+    def to_csv(self, output: str):
+        """Produces csv file with all the targets in the TargetSet and saves to output
+        Parameters
+        ----------
+        output: string
+            csv output location and desired file name
+
+        Return
+        ------
+        csv file
+            file containing list of planets and select parameters for all targets in TargetSet
+        """
+
         # Initialize DataFrame to fill with Targets from TargetSet
         targets_df = pd.DataFrame(
             [],
