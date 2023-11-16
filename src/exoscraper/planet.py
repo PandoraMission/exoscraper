@@ -53,6 +53,7 @@ class Planet(object):
         if len(tab) == 0:
             raise ValueError("No planet found")
         self._tab = tab[0]
+        return
         _ = [
             setattr(
                 self,
