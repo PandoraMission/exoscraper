@@ -1,19 +1,79 @@
 """Utilities for querying different databases for Target """
 import warnings
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import astropy.units as u
 import lightkurve as lk
 import numpy as np
 import pandas as pd
+from astropy.constants import c as speedoflight
 from astropy.coordinates import Distance, SkyCoord
+from astropy.io import votable
 from astropy.time import Time
+from astropy.utils.data import download_file
 from astroquery import log as asqlog
 from astroquery.gaia import Gaia
 from astroquery.ipac.nexsci.nasa_exoplanet_archive import NasaExoplanetArchive
 
+from . import log
+
 asqlog.setLevel("ERROR")
+
+
+@lru_cache
+def get_SED(coord: Union[str, tuple], radius: Union[float, u.Quantity] = 2) -> dict:
+    """Get the SED data for the target from Vizier
+
+    Parameters
+    ----------
+    coord: string
+        Astropy tuple of ra and dec or name of the object to query
+    radius: float
+        Radius to query in arcseconds
+    """
+
+    if isinstance(radius, u.Quantity):
+        radius = radius.to(u.arcsecond).value
+    if isinstance(coord, str):
+        vizier_url = f"https://vizier.cds.unistra.fr/viz-bin/sed?-c={coord.replace(' ', '%20')}&-c.rs={radius}"
+    elif isinstance(coord, tuple):
+        vizier_url = f"https://vizier.cds.unistra.fr/viz-bin/sed?-c={coord[0]},{coord[1]}&-c.rs={radius}"
+    else:
+        raise ValueError("`coord` must be a `string` or `tuple` object.")
+    try:
+        df = (
+            votable.parse(download_file(vizier_url, show_progress=False))
+            .get_first_table()
+            .to_table()
+        )
+    except IndexError:
+        log.warning(f"No SED photometry found for `{coord}` at Vizier.")
+        return None
+
+    df = df[df["sed_flux"] / df["sed_eflux"] > 3]
+    if len(df) == 0:
+        log.warning(f"No SED photometry found for {coord} at Vizier.")
+        return None
+    wavelength = (speedoflight / (np.asarray(df["sed_freq"]) * u.GHz)).to(u.angstrom)
+    sed_flux = np.asarray(df["sed_flux"]) * u.jansky
+    sed_flux = sed_flux.to(
+        u.erg / u.cm**2 / u.s / u.angstrom,
+        equivalencies=u.spectral_density(wavelength),
+    )
+    sed_flux_err = np.asarray(df["sed_eflux"]) * u.jansky
+    sed_flux_err = sed_flux_err.to(
+        u.erg / u.cm**2 / u.s / u.angstrom,
+        equivalencies=u.spectral_density(wavelength),
+    )
+    s = np.argsort(wavelength)
+    SED = {
+        "wavelength": wavelength[s],
+        "sed_flux": sed_flux[s],
+        "sed_flux_err": sed_flux_err[s],
+        "filter": np.asarray(df["sed_filter"])[s],
+    }
+    return SED
 
 
 @lru_cache

@@ -6,7 +6,7 @@ import astropy.units as u
 import lightkurve as lk
 from astropy.coordinates import SkyCoord
 
-from .query import get_planets, get_sky_catalog
+from .query import get_planets, get_SED, get_sky_catalog
 
 
 @dataclass
@@ -35,6 +35,14 @@ class Target(object):
     def _repr_html_(self):
         return f"{self.name} ({self.ra._repr_latex_()},  {self.dec._repr_latex_()})"
 
+    @property
+    def SED(self) -> dict:
+        """Returns a dictionary containing the SED of the target from Vizier
+
+        Uses a default radius of 3 arcseconds.
+        """
+        return get_SED((self.ra.value, self.dec.value), radius=3 * u.arcsecond)
+
     @staticmethod
     def from_gaia(coord: Union[str, SkyCoord]):
         name = None
@@ -62,8 +70,11 @@ class Target(object):
         raise NotImplementedError
 
     @staticmethod
-    def from_name(coord: str):
-        raise NotImplementedError
+    def from_name(name: str):
+        if not isinstance(name, str):
+            raise ValueError("`name` must be a `string`.")
+        else:
+            return Target.from_gaia(coord=name)
 
     @property
     def lightcurve(self):
@@ -81,12 +92,6 @@ class Target(object):
     def transit_times(self, time: u.Quantity):
         # calculate future transit times
         # return array of future transit times out to a specified time
-        raise NotImplementedError
-
-    @property
-    def SED(self):
-        # calculate SED of target star
-        # return idk whatever Christina has written
         raise NotImplementedError
 
     @property
