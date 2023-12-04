@@ -9,8 +9,8 @@ readme = "docs/README.md"
 [tool.poetry.dependencies]
 python = "^3.9"
 lightkurve = "^2.4.0"
-exoplanet = "^0.5.3"
-pymc3-ext = "^0.1.1"
+rich = "^13.4.2"
+beautifulsoup4 = "^4.12.2"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -23,6 +23,7 @@ pytest = "^7.3.1"
 mkdocs-material = "^9.1.14"
 mkdocstrings = "^0.21.2"
 mkdocs-jupyter = "^0.24.1"
+lxml = "^4.9.3"
 
 [build-system]
 requires = ["poetry-core"]
