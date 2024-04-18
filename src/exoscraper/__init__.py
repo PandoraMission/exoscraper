@@ -16,4 +16,4 @@ log = logging.getLogger("exoscraper")
 log.addHandler(RichHandler(markup=True))
 log.setLevel("INFO")
 
-from .target import Target  # noqa
+from .system import System  # noqa
