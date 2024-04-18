@@ -1,13 +1,14 @@
-import pymc3 as pm
+# import pymc3 as pm
 import numpy as np
 import astropy.units as u
+from typing import Optional
 
 
 class Distribution(object):
     """Base class to work with distributions that have errors, units and references"""
 
     def __init__(
-        self, name: str, *args, unit: str = "", reference: Optional[str] = None
+        self, *args, name: str, unit: str = "", reference: Optional[str] = None
     ):
         self.name = name
         self.unit = u.Unit(unit)
@@ -67,16 +68,17 @@ class NormalDistribution(Distribution):
 
     @property
     def distribution(self):
-        return pm.Normal(self.name, self.mean, self.sigma, shape=len(self))
+        # return pm.Normal(self.name, self.mean, self.sigma, shape=len(self))
+        raise NotImplementedError
 
-    def sample(self, size=1):
+    def sample(self, size=1, seed=None):
         return (
-            np.random.normal(
+            np.random.default_rng(seed).normal(
                 self.mean,
                 self.sigma,
                 size=(
                     size,
-                    len(self),
+                    # len(self),
                 ),
             )
             * self.unit
@@ -90,7 +92,8 @@ class NormalDistribution(Distribution):
         )
 
     def _repr_latex_(self):
-        return f"{self.name} ({self.disttype}) {self.to_string(format='latex', subfmt='inline')} $\pm$ {(self.sigma[0] * self.unit if len(self) == 1 else self.sigma * self.unit).to_string(format='latex', subfmt='inline')}"
+        return (f"{self.name} ({self.disttype}) {self.to_string(format='latex', subfmt='inline')} $\pm$ " +
+                f"{(self.sigma[0] * self.unit if len(self) == 1 else self.sigma * self.unit).to_string(format='latex', subfmt='inline')}")
 
 
 class LogNormalDistribution(NormalDistribution):
@@ -98,9 +101,13 @@ class LogNormalDistribution(NormalDistribution):
     def disttype(self):
         return "LogNormal"
 
+    def sample(self, size=1):
+        raise NotImplementedError
+
     @property
     def distribution(self):
-        return pm.LogNormal(self.name, self.mean, self.sigma, shape=len(self))
+        # return pm.LogNormal(self.name, self.mean, self.sigma, shape=len(self))
+        raise NotImplementedError
 
 
 class UniformDistribution(Distribution):
@@ -128,16 +135,17 @@ class UniformDistribution(Distribution):
 
     @property
     def distribution(self):
-        return pm.Uniform(self.name, self.lower, self.upper, shape=len(self))
+        # return pm.Uniform(self.name, self.lower, self.upper, shape=len(self))
+        raise NotImplementedError
 
-    def sample(self, size=1):
+    def sample(self, size=1, seed=None):
         return (
-            np.random.uniform(
+            np.random.default_rng(seed).uniform(
                 self.lower,
                 self.upper,
                 size=(
                     size,
-                    len(self),
+                    # len(self),
                 ),
             )
             * self.unit
@@ -151,4 +159,5 @@ class UniformDistribution(Distribution):
         )
 
     def _repr_latex_(self):
-        return f"{self.name} ({self.disttype}) {self.to_string(format='latex', subfmt='inline')} $\pm$ {(self.diff[0] * self.unit if len(self) == 1 else self.diff * self.unit).to_string(format='latex', subfmt='inline')}"
+        return (f"{self.name} ({self.disttype}) {self.to_string(format='latex', subfmt='inline')} $\pm$ " +
+                f"{(self.diff[0] * self.unit if len(self) == 1 else self.diff * self.unit).to_string(format='latex', subfmt='inline')}")
