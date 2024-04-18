@@ -1,59 +1,40 @@
-"""Classes to work specifically with planets and planet host stars"""
-from functools import lru_cache
+"""Classes to work specifically with planets"""
+from dataclasses import dataclass
 
 import astropy.units as u
 import numpy as np
 import pandas as pd
-import requests
 from astropy.constants import G
-from astroquery.ipac.nexsci.nasa_exoplanet_archive import NasaExoplanetArchive
-from bs4 import BeautifulSoup
+from astropy.table import QTable
+
+from .query import get_citation
+from .utils import get_ref_dict
+from .distribution import NormalDistribution, UniformDistribution
 
 
-@lru_cache
-def get_nexsci_tab(name):
-    """LRU Cached helper to get the composite entry for a given name"""
-    return NasaExoplanetArchive.query_object(name, table="pscomppars")
-
-
-@lru_cache
-def get_citation(bibcode):
-    """Goes to NASA ADS and webscrapes the bibtex citation for a give bibcode"""
-    d = requests.get(f"https://ui.adsabs.harvard.edu/abs/{bibcode}/exportcitation")
-    soup = BeautifulSoup(d.content, "html.parser")
-    return soup.find("textarea").text
-
-
-def get_ref_dict(tab):
-    """Parses the NExSci table for a list of references"""
-    cols = [c for c in tab.columns if "reflink" in c]
-    refs = np.unique(tab[cols])[0]
-    result = {
-        ref.split(">")[1]
-        .split("</a")[0]
-        .strip(): ref.split("href=")[1]
-        .split(" target=ref")[0]
-        for ref in refs
-        if ref != ""
-    }
-    for key, item in result.items():
-        if "ui.adsabs" in item.lower():
-            result[key] = get_citation(item.split("abs/")[1].split("/")[0])
-    return result
-
-
+@dataclass
 class Planet(object):
-    """Helper class to get information from NExSci. This class only holds and prints information, it doesn't calculate anything."""
+    """Helper class to hold planet information from NExSci. This class only holds and prints information,
+    it doesn't calculate anything.
+    """
 
-    def __init__(self, hostname: str, letter: str = "b"):
-        self.hostname = hostname
-        self.letter = letter
-        tab = get_nexsci_tab(hostname)
-        tab = tab[tab["pl_letter"] == letter]
-        if len(tab) == 0:
-            raise ValueError("No planet found")
-        self._tab = tab[0]
-        return
+    def __init__(
+            self,
+            params: QTable,
+            ):
+        self.hostname = params['hostname']
+        self.letter = params['pl_letter']
+        # tab = get_nexsci_tab(hostname)
+        # tab = tab[tab["pl_letter"] == letter]
+        # if len(tab) == 0:
+        #     raise ValueError("No planet found")
+        # self._tab = tab[0]
+        # good_inds = [col for col in params.columns if 'pl_' in col]
+        # print(good_inds)
+        # good_inds = good_inds + ['st_rad', 'st_teff']
+        # print(good_inds)
+        self._tab = params  # [good_inds]
+        # return
         _ = [
             setattr(
                 self,
@@ -73,9 +54,10 @@ class Planet(object):
                 | c.endswith("str")
             )
         ]
-        # Error on the archive that the unit is days not hours...!
+        # Error on the archive that the unit is days when it should be hours!
         if self.pl_trandur.unit == u.day:
-            self.pl_trandur /= 24
+            # self.pl_trandur /= 24  # I don't think the value needs to be changed, just the unit
+            self.pl_trandur = self.pl_trandur.value * u.hour
 
         for c in self._tab.columns:
             if c.endswith("reflink"):
@@ -125,12 +107,14 @@ class Planet(object):
         self._fix_ratdor()
         self._fix_ratror()
         self._fix_eqt()
+        self._make_distributions()
         self.references = get_ref_dict(self._tab)
         self.acknowledgements = [
-            "This research has made use of the NASA Exoplanet Archive, which is operated by the California"
-            " Institute of Technology, under contract with the National Aeronautics and Space Administration "
-            "under the Exoplanet Exploration Program."
+            "This research has made use of the NASA Exoplanet Archive, which is operated by the"
+            "  California Institute of Technology, under contract with the National Aeronautics "
+            "and Space Administration under the Exoplanet Exploration Program."
         ]
+        return
 
     @property
     def name(self):
@@ -220,34 +204,47 @@ class Planet(object):
             ) ** 0.5 * r
             self.pl_ratror = r
 
+    def _make_distributions(self):
+        """Hidden function to build distributions for each parameter"""
+        for c in self._tab.columns:
+            if c.endswith("err1"):
+                attr = getattr(self, c[:-4])
+                if isinstance(attr, u.Quantity):
+                    if self._tab[c] != "":
+                        reflink = None
+                        if (c[:-4] + "_reflink") in self._tab.columns:
+                            reflink = (self._tab[c[:-4] + "_reflink"])
+                        setattr(
+                            attr,
+                            "distribution",
+                            NormalDistribution(
+                                attr.value,
+                                max(abs(getattr(attr.err1).value), abs(getattr(attr.err2).value)),
+                                name=c[:-4],
+                                unit=str(attr.unit),
+                                reference=reflink
+                            ),
+                        )
+            if c.endswith("lim"):
+                if self._tab[c] == 1:
+                    attr = getattr(self, c[:-3])
+                    reflink = None
+                    if (c[:-3] + "_reflink") in self._tab.columns:
+                        reflink = attr.reference_link
+                    setattr(
+                        attr,
+                        "distribution",
+                        UniformDistribution(
+                            0,
+                            self._tab[c[:-3]],
+                            name=c[:-3],
+                            unit=str(attr.unit),
+                            reference=reflink,
+                        )
+                    )
+
     def __repr__(self):
         return self.hostname + self.letter
-
-    @property
-    def StarParametersTable(self):
-        d = pd.DataFrame(columns=["Value", "Description", "Reference"])
-        for key, symbol, desc in zip(
-            ["st_rad", "st_mass", "st_age", "st_logg"],
-            ["R", "M", "Age", "logg"],
-            ["Stellar Radius", "Stellar Mass", "Stellar Age", "Stellar Gravity"],
-        ):
-            attr = getattr(self, key)
-            if np.isfinite(attr):
-                d.loc[symbol, "Value"] = "{0}^{{{1}}}_{{{2}}}".format(
-                    attr.to_string(format="latex"), attr.err1.value, attr.err2.value
-                )
-                d.loc[symbol, "Description"] = desc
-                d.loc[symbol, "Reference"] = f"\\cite{{{attr.reference_name}}}"
-        return d
-
-    @property
-    def StarParametersTableLatex(self):
-        print(
-            self.StarParametersTable.to_latex(
-                caption=f"Stellar Parameters for {self.hostname}",
-                label="tab:stellarparams",
-            )
-        )
 
     @property
     def PlanetParametersTable(self):
@@ -288,92 +285,92 @@ class Planet(object):
         )
 
 
-class Planets(object):
-    """Special class to hold many planets in one system"""
+# class Planets(object):
+#     """Special class to hold many planets in one system"""
 
-    def __init__(self, hostname: str):
-        self.hostname = hostname
-        tab = get_nexsci_tab(hostname)
-        if len(tab) == 0:
-            raise ValueError("No planets found")
-        self.letters = np.unique(list(tab["pl_letter"]))
-        self.planets = [Planet(self.hostname, letter) for letter in self.letters]
-        self._tab = tab
-        self._cols = [
-            c
-            for c in list(self._tab.columns)
-            if not (
-                c.endswith("err1")
-                | c.endswith("err2")
-                | c.endswith("reflink")
-                | c.endswith("lim")
-                | c.endswith("str")
-            )
-        ]
-        _ = [
-            setattr(self, attr, [getattr(planet, attr) for planet in self])
-            for attr in self._cols
-            if attr.startswith("pl")
-        ]
-        _ = [
-            setattr(self, attr, getattr(self[0], attr))
-            for attr in self._cols
-            if attr.startswith("st")
-        ]
-        _ = [
-            setattr(self, attr, getattr(self[0], attr))
-            for attr in self._cols
-            if attr.startswith("sy")
-        ]
-        self.acknowledgements = []
-        self.references = self[0].references
-        for planet in self:
-            self.references.update(planet.references)
-            [self.acknowledgements.append(a) for a in planet.acknowledgements]
-        self.acknowledgements = list(np.unique(self.acknowledgements))
+#     def __init__(self, hostname: str):
+#         self.hostname = hostname
+#         tab = get_nexsci_tab(hostname)
+#         if len(tab) == 0:
+#             raise ValueError("No planets found")
+#         self.letters = np.unique(list(tab["pl_letter"]))
+#         self.planets = [Planet(self.hostname, letter) for letter in self.letters]
+#         self._tab = tab
+#         self._cols = [
+#             c
+#             for c in list(self._tab.columns)
+#             if not (
+#                 c.endswith("err1")
+#                 | c.endswith("err2")
+#                 | c.endswith("reflink")
+#                 | c.endswith("lim")
+#                 | c.endswith("str")
+#             )
+#         ]
+#         _ = [
+#             setattr(self, attr, [getattr(planet, attr) for planet in self])
+#             for attr in self._cols
+#             if attr.startswith("pl")
+#         ]
+#         _ = [
+#             setattr(self, attr, getattr(self[0], attr))
+#             for attr in self._cols
+#             if attr.startswith("st")
+#         ]
+#         _ = [
+#             setattr(self, attr, getattr(self[0], attr))
+#             for attr in self._cols
+#             if attr.startswith("sy")
+#         ]
+#         self.acknowledgements = []
+#         self.references = self[0].references
+#         for planet in self:
+#             self.references.update(planet.references)
+#             [self.acknowledgements.append(a) for a in planet.acknowledgements]
+#         self.acknowledgements = list(np.unique(self.acknowledgements))
 
-    def __len__(self):
-        return len(self.letters)
+#     def __len__(self):
+#         return len(self.letters)
 
-    def __repr__(self):
-        return (
-            f"{self.hostname} System ({len(self)} Planet{'s' if len(self) > 1 else ''})"
-        )
+#     def __repr__(self):
+#         return (
+#             f"{self.hostname} System ({len(self)} Planet{'s' if len(self) > 1 else ''})"
+#         )
 
-    def __getitem__(self, idx):
-        if isinstance(idx, int):
-            return self.planets[idx]
-        elif isinstance(idx, str):
-            if idx in self.letters:
-                return self.planets[np.where(self.letters == idx)[0][0]]
-            else:
-                raise ValueError(f"No planet `{idx}` in the {self.hostname} system.")
-        else:
-            raise ValueError(f"Can not parse `{idx}` as a planet.")
+#     def __getitem__(self, idx):
+#         if isinstance(idx, int):
+#             return self.planets[idx]
+#         elif isinstance(idx, str):
+#             if idx in self.letters:
+#                 return self.planets[np.where(self.letters == idx)[0][0]]
+#             else:
+#                 raise ValueError(f"No planet `{idx}` in the {self.hostname} system.")
+#         else:
+#             raise ValueError(f"Can not parse `{idx}` as a planet.")
 
-    @property
-    def StarParametersTable(self):
-        return self[0].StarParametersTable
+#     @property
+#     def StarParametersTable(self):
+#         return self[0].StarParametersTable
 
-    @property
-    def StarParametersTableLatex(self):
-        return self[0].StarParametersTableLatex
+#     @property
+#     def StarParametersTableLatex(self):
+#         return self[0].StarParametersTableLatex
 
-    @property
-    def PlanetsParametersTable(self):
-        dfs = [
-            planet.PlanetParametersTable[["Value", "Reference"]].rename(
-                {"Value": planet.name}, axis="columns"
-            )
-            for planet in self
-        ]
-        return pd.concat([self[0].PlanetParametersTable[["Description"]], *dfs], axis=1)
+#     @property
+#     def PlanetsParametersTable(self):
+#         dfs = [
+#             planet.PlanetParametersTable[["Value", "Reference"]].rename(
+#                 {"Value": planet.name}, axis="columns"
+#             )
+#             for planet in self
+#         ]
+#         return pd.concat([self[0].PlanetParametersTable[["Description"]], *dfs], axis=1)
 
-    @property
-    def PlanetsParametersTableLatex(self):
-        print(
-            self.PlanetsParametersTable.to_latex(
-                caption=f"Planet Parameters for {self.hostname} Planets",
-                label="tab:planetparams",
-            )
-        )
+#     @property
+#     def PlanetsParametersTableLatex(self):
+#         print(
+#             self.PlanetsParametersTable.to_latex(
+#                 caption=f"Planet Parameters for {self.hostname} Planets",
+#                 label="tab:planetparams",
+#             )
+#         )
