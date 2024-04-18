@@ -171,22 +171,25 @@ class System(object):
             iterations: int = 1,
             seed: int | None = None,
             median_flag: bool = False,
+            vars_out: bool = False,
             **kwargs,
     ):
         """
         Passes known system information to exoplanet to generate BATMAN model. Samples a single
         iteration of the time series by default.
         """
+        pars = ['pl_tranmid', 'pl_orbper', 'pl_ratror', 'pl_ratdor', 'pl_orbincl', 'pl_orbeccen']
         timeseries = np.zeros((iterations, len(time)))
+        vars_list = np.zeros((iterations, len(pars)))
         for i in range(iterations):
-            # build input arrays for all variables that are None
-            pars = ['pl_tranmid', 'pl_orbper', 'pl_ratror', 'pl_ratdor', 'pl_orbincl', 'pl_orbeccen']
+            # build input arrays for all variables that are not user-provided
             for m, var in enumerate([t0, period, ror, dor, inc, ecc]):
                 if median_flag:
                     var = [getattr(self[0][t], pars[m]).value for t in range(len(self.planets))]
                 if var is None:
                     var = [getattr(self[0][t], pars[m]).distribution.sample(seed=seed).value for t in range(len(self.planets))]
-            # Save vars to output too?
+                if vars_out:
+                    vars_list[i][m] = var
 
             flux = np.zeros(len(time))
 
@@ -210,7 +213,10 @@ class System(object):
 
             timeseries[i] += flux
 
-        return timeseries
+        if vars_out:
+            return timeseries, vars_list
+        else:
+            return timeseries
 
     def motto(self):
         # mottos = ["If it's online, we can scrape it!",
