@@ -186,6 +186,7 @@ class System(object):
                     var = [getattr(self[0][t], pars[m]).value for t in range(len(self.planets))]
                 if var is None:
                     var = [getattr(self[0][t], pars[m]).distribution.sample(seed=seed).value for t in range(len(self.planets))]
+            # Save vars to output too?
 
             flux = np.zeros(len(time))
 
