@@ -10,11 +10,14 @@ import pandas as pd
 from astropy.constants import c as speedoflight
 from astropy.coordinates import Distance, SkyCoord
 from astropy.io import votable
+from astropy.table import QTable
 from astropy.time import Time
 from astropy.utils.data import download_file
 from astroquery import log as asqlog
 from astroquery.gaia import Gaia
 from astroquery.ipac.nexsci.nasa_exoplanet_archive import NasaExoplanetArchive
+from bs4 import BeautifulSoup
+import requests
 
 from . import log
 
@@ -260,10 +263,12 @@ def get_sky_catalog(
 @lru_cache
 def get_planets(
     #    coord: SkyCoord,
-    ra: float,
-    dec: float,
+    ra: float | None = None,
+    dec: float | None = None,
+    name: str | None = None,
     radius: u.Quantity = 20 * u.arcsecond,
-    attrs: List = ["pl_orbper", "pl_tranmid", "pl_trandur", "pl_trandep"],
+    attrs: List = [],
+    # attrs: List = ["pl_orbper", "pl_tranmid", "pl_trandur", "pl_trandep"],
 ) -> dict:
     """
     Returns a dictionary of dictionaries with planet parameters.
@@ -277,25 +282,55 @@ def get_planets(
     #     coord2000 = coord
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        planets_tab = NasaExoplanetArchive.query_region(
-            table="pscomppars", coordinates=SkyCoord(ra, dec, unit=u.deg), radius=radius
-        )
-        if len(planets_tab) != 0:
-            planets = {
-                letter: {
-                    attr: planets_tab[planets_tab["pl_letter"] == letter][attr][
-                        0
-                    ].unmasked
-                    for attr in attrs
-                }
-                for letter in planets_tab["pl_letter"]
-            }
-            # There's an error in the NASA exoplanet archive units that makes duration "days" instead of "hours"
-            for planet in planets:
-                if "pl_trandur" in planets[planet].keys():
-                    planets[planet]["pl_trandur"] = (
-                        planets[planet]["pl_trandur"].value * u.hour
-                    )
+        if name is not None:
+            planets_tab = NasaExoplanetArchive.query_object(name, table="pscomppars")
+        elif ra is not None and dec is not None:
+            planets_tab = NasaExoplanetArchive.query_region(
+                table="pscomppars", coordinates=SkyCoord(ra, dec, unit=u.deg), radius=radius
+            )
         else:
-            planets = {}
-    return planets
+            raise ValueError
+        if len(planets_tab) != 0:
+            # if len(attrs) == 0:
+            #     attrs = planets_tab.keys()
+            # else:
+            #     attrs = List[attrs]
+            # planets = {
+            #     letter: {
+            #         attr: planets_tab[planets_tab["pl_letter"] == letter][attr][
+            #             0
+            #         ]  # .unmasked
+            #         for attr in attrs
+            #     }
+            #     for letter in planets_tab["pl_letter"]
+            # }
+            # planets = planets_tab.to_pandas()
+            # planets = planets.to_dict(orient='records')
+            # print(planets)
+
+            # There's an error in the NASA exoplanet archive units that makes duration "days" instead of "hours"
+            # for planet in planets:
+            #     if "pl_trandur" in planets[planet].keys():
+            #         planets[planet]["pl_trandur"] = (
+            #             planets[planet]["pl_trandur"].value * u.hour
+            #         )
+            if planets_tab['pl_trandur'].unit == u.day:
+                planets_tab['pl_trandur'] = planets_tab['pl_trandur'].value * u.hour
+                planets_tab['pl_trandurerr1'] = planets_tab['pl_trandurerr1'].value * u.hour
+                planets_tab['pl_trandurerr2'] = planets_tab['pl_trandurerr2'].value * u.hour
+
+            if len(attrs) != 0:
+                planets_tab = planets_tab[attrs]
+
+        else:
+            planets_tab = QTable()
+
+    return planets_tab
+
+
+@lru_cache
+def get_citation(bibcode):
+    """Goes to NASA ADS and webscrapes the bibtex citation for a given bibcode"""
+    d = requests.get(f"https://ui.adsabs.harvard.edu/abs/{bibcode}/exportcitation")
+    soup = BeautifulSoup(d.content, "html.parser")
+    return soup.find("textarea").text
