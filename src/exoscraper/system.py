@@ -159,49 +159,106 @@ class System(object):
     def sample_timeseries(
             self,
             time,
-            t0: list | None = None,
-            period: list | None = None,
-            ror: list | None = None,
-            dor: list | None = None,
-            inc: list | None = None,
-            ecc: list | None = None,
+            t0: list = [],
+            period: list = [],
+            ror: list = [],
+            dor: list = [],
+            inc: list = [],
+            ecc: list = [],
             periastron=90,
             limb_dark: str = "uniform",
             u: list = [],
             iterations: int = 1,
             seed: int | None = None,
             median_flag: bool = False,
-            vars_out: bool = False,
+            vals_out: bool = False,
             **kwargs,
     ):
         """
         Passes known system information to exoplanet to generate BATMAN model. Samples a single
-        iteration of the time series by default.
-        """
-        pars = ['pl_tranmid', 'pl_orbper', 'pl_ratror', 'pl_ratdor', 'pl_orbincl', 'pl_orbeccen']
-        timeseries = np.zeros((iterations, len(time)))
-        vars_list = np.zeros((iterations, len(pars)))
-        for i in range(iterations):
-            # build input arrays for all variables that are not user-provided
-            for m, var in enumerate([t0, period, ror, dor, inc, ecc]):
-                if median_flag:
-                    var = [getattr(self[0][t], pars[m]).value for t in range(len(self.planets))]
-                if var is None:
-                    var = [getattr(self[0][t], pars[m]).distribution.sample(seed=seed).value for t in range(len(self.planets))]
-                if vars_out:
-                    vars_list[i][m] = var
+        iteration of the time series by default. If values are not specified for each parameter,
+        the values listed for each planet on the NASA Exoplanet Archive and their associated errors
+        will be used.
 
+        Parameters
+        ----------
+        time : np.array
+            Timestamps at which to model the timeseries.
+        t0 : list
+            Mid-transit times to be used for each planet in the timeseries model. Unit should be the
+            same as is used in `time`.
+        period : list
+            Periods to be used for each planet in the timeseries model. Unit should be the same as is used
+            in `time`.
+        ror : list
+            Ratio of planetary radius to stellar radius for each planet in the time series model.
+        dor : list
+            Ratio of semimajor axis to the radius of the host star for each planet in the time series model.
+        inc : list
+            Orbital inclination in degrees for each planet in the time series model.
+        ecc : list
+            Orbital eccentricity for each planet in the time series model.
+        periastron : list
+            Longitude of periastron in degrees for each planet in the time series model.
+        limb_dark : str
+            Limb darkening model to use in modeling the planet transits in the time series. Default is
+            "uniform".
+        u : list
+            Limb darkening coefficients corresponding to the limb darkening model specified in `limb_dark`.
+        iterations : int
+            Number of timeseries models to generate for the system. This will determine how many parameter
+            draws are performed if `median_flag` is False and any parameters are left unspecified.
+        seed : int
+            Seed value for the draws from the parameter distributions if `median_flag` is False.
+        median_flag : bool
+            Flag determining if median values for each parameter are used. If set to True, the median values
+            for each parameter will be used. If set to False, values will be drawn from the distributions
+            of each parameter.
+        vals_out : bool
+            Flag determining whether the parameter values used in each timeseries model will be returned. If
+            set to True, the function will return two outputs.
+        """
+        par_names = ['pl_tranmid', 'pl_orbper', 'pl_ratror', 'pl_ratdor', 'pl_orbincl', 'pl_orbeccen']
+        pars_in = {'t0': t0, 'period': period, 'ror': ror, 'dor': dor, 'inc': inc, 'ecc': ecc}
+        vars = {
+            't0': np.ones((iterations, len(self.planets))),
+            'period': np.ones((iterations, len(self.planets))),
+            'ror': np.ones((iterations, len(self.planets))),
+            'dor': np.ones((iterations, len(self.planets))),
+            'inc': np.ones((iterations, len(self.planets))),
+            'ecc': np.ones((iterations, len(self.planets))),
+        }
+        timeseries = np.zeros((iterations, len(time)))
+
+        if median_flag:
+            for p, par in enumerate(vars.keys()):
+                vars[par] *= [getattr(self[0][t], par_names[p]).value for t in range(len(self.planets))]
+        else:
+            for p, par in enumerate(vars.keys()):
+                if len(pars_in[par]) == 0:
+                    vars[par] *= np.array([
+                        getattr(
+                            self[0][t],
+                            par_names[p]
+                        ).distribution.sample(seed=seed, size=iterations).value for t in range(len(self.planets))
+                    ]).T
+                elif len(pars_in[par]) == len(self.planets):
+                    vars[par] *= pars_in[par]
+                else:
+                    raise ValueError('Number of parameter values provided must match number of planets')
+
+        for i in range(iterations):
             flux = np.zeros(len(time))
 
             for n, pl in enumerate(self.planets):
                 model, params = get_batman_model(
                     time=time,
-                    t0=t0[n][i],
-                    per=period[n][i],
-                    ror=ror[n][i],
-                    dor=dor[n][i],
-                    inc=inc[n][i],
-                    ecc=ecc[n][i],
+                    t0=vars['t0'][i][n],
+                    per=vars['period'][i][n],
+                    ror=vars['ror'][i][n],
+                    dor=vars['dor'][i][n],
+                    inc=vars['inc'][i][n],
+                    ecc=vars['ecc'][i][n],
                     periastron=periastron,
                     limb_dark=limb_dark,
                     u=u,
@@ -211,10 +268,10 @@ class System(object):
                 setattr(pl, "model", model)
                 flux += model.light_curve(params)
 
-            timeseries[i] += flux
+            timeseries[i] += flux - len(self.planets) + 1
 
-        if vars_out:
-            return timeseries, vars_list
+        if vals_out:
+            return timeseries, vars
         else:
             return timeseries
 
