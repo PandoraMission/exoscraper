@@ -76,6 +76,10 @@ class Planet(object):
                                 "reference_link",
                                 ref.split("adsurl = {")[1].split("}")[0],
                             )
+                        elif "calculated value" in ref.lower():
+                            setattr(attr, "reference", "Archive Calculation")
+                        elif "exofop" in ref.lower():
+                            setattr(attr, "reference", "ExoFOP")
             if c.endswith("err1"):
                 attr = getattr(self, c[:-4])
                 if isinstance(attr, u.Quantity):
@@ -207,19 +211,31 @@ class Planet(object):
     def _make_distributions(self):
         """Hidden function to build distributions for each parameter"""
         for c in self._tab.columns:
+            # print(c)
             if c.endswith("err1"):
                 attr = getattr(self, c[:-4])
                 if isinstance(attr, u.Quantity):
-                    if self._tab[c] != "":
+                    if self._tab[c] != "" and not np.isnan(attr.value):
                         reflink = None
                         if (c[:-4] + "_reflink") in self._tab.columns:
                             reflink = (self._tab[c[:-4] + "_reflink"])
+                        else:
+                            setattr(attr, "reference", None)
+                        #     # attr.reference = np.nan
+                        # print(attr)
+                        # print(type(attr.value))
+                        # print(np.isnan(attr.value) or attr.value == np.nan)
+                        # print(attr.__dict__)
+                        if attr.reference == 'Calculated' and attr.value != np.nan:
+                            err = attr.err
+                        else:
+                            err = max(abs(attr.err1.value), abs(attr.err2.value))
                         setattr(
                             attr,
                             "distribution",
                             NormalDistribution(
                                 attr.value,
-                                max(abs(getattr(attr.err1).value), abs(getattr(attr.err2).value)),
+                                err,
                                 name=c[:-4],
                                 unit=str(attr.unit),
                                 reference=reflink
