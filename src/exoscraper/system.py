@@ -165,7 +165,7 @@ class System(object):
             dor: list = [],
             inc: list = [],
             ecc: list = [],
-            periastron=90,
+            periastron: list = [],
             limb_dark: str = "uniform",
             u: list = [],
             iterations: int = 1,
@@ -199,7 +199,8 @@ class System(object):
         ecc : list
             Orbital eccentricity for each planet in the time series model.
         periastron : list
-            Longitude of periastron in degrees for each planet in the time series model.
+            Longitude of periastron in degrees for each planet in the time series model. Default is 90
+            degrees.
         limb_dark : str
             Limb darkening model to use in modeling the planet transits in the time series. Default is
             "uniform".
@@ -218,8 +219,10 @@ class System(object):
             Flag determining whether the parameter values used in each timeseries model will be returned. If
             set to True, the function will return two outputs.
         """
-        par_names = ['pl_tranmid', 'pl_orbper', 'pl_ratror', 'pl_ratdor', 'pl_orbincl', 'pl_orbeccen']
-        pars_in = {'t0': t0, 'period': period, 'ror': ror, 'dor': dor, 'inc': inc, 'ecc': ecc}
+        if len(periastron) == 0:
+            periastron = np.ones(len(self.planets)) * 90.
+        par_names = ['pl_tranmid', 'pl_orbper', 'pl_ratror', 'pl_ratdor', 'pl_orbincl', 'pl_orbeccen', 'pl_orblper']
+        pars_in = {'t0': t0, 'period': period, 'ror': ror, 'dor': dor, 'inc': inc, 'ecc': ecc, 'peri': periastron}
         vars = {
             't0': np.ones((iterations, len(self.planets))),
             'period': np.ones((iterations, len(self.planets))),
@@ -227,6 +230,7 @@ class System(object):
             'dor': np.ones((iterations, len(self.planets))),
             'inc': np.ones((iterations, len(self.planets))),
             'ecc': np.ones((iterations, len(self.planets))),
+            'peri': np.ones((iterations, len(self.planets))),
         }
         timeseries = np.zeros((iterations, len(time)))
 
@@ -259,7 +263,7 @@ class System(object):
                     dor=vars['dor'][i][n],
                     inc=vars['inc'][i][n],
                     ecc=vars['ecc'][i][n],
-                    periastron=periastron,
+                    periastron=vars['peri'][i][n],
                     limb_dark=limb_dark,
                     u=u,
                     params_out=True,
