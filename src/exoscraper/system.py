@@ -219,8 +219,6 @@ class System(object):
             Flag determining whether the parameter values used in each timeseries model will be returned. If
             set to True, the function will return two outputs.
         """
-        if len(periastron) == 0:
-            periastron = np.ones(len(self.planets)) * 90.
         par_names = ['pl_tranmid', 'pl_orbper', 'pl_ratror', 'pl_ratdor', 'pl_orbincl', 'pl_orbeccen', 'pl_orblper']
         pars_in = {'t0': t0, 'period': period, 'ror': ror, 'dor': dor, 'inc': inc, 'ecc': ecc, 'peri': periastron}
         vars = {
@@ -236,8 +234,12 @@ class System(object):
 
         if median_flag:
             for p, par in enumerate(vars.keys()):
-                vars[par] *= [getattr(self[0][t], par_names[p]).value for t in range(len(self.planets))]
+                if len(pars_in[par]) == len(self.planets):
+                    vars[par] *= pars_in[par]
+                else:
+                    vars[par] *= [getattr(self[0][t], par_names[p]).value for t in range(len(self.planets))]
         else:
+            vars['peri'] = [getattr(self[0][t], 'pl_orblper').value for t in range(len(self.planets))]
             for p, par in enumerate(vars.keys()):
                 if len(pars_in[par]) == 0:
                     vars[par] *= np.array([
