@@ -25,18 +25,18 @@ def get_ref_dict(tab):
 
 
 def get_batman_model(
-        time: np.array,
-        t0: float,
-        per: float,
-        ror: float,
-        dor: float,
-        inc: float = 90.,
-        ecc: float = 0.,
-        periastron: float = 90.,
-        limb_dark: str = 'uniform',
-        u: list = [],
-        params_out: bool = False,
-        **kwargs,
+    time: np.array,
+    t0: float,
+    per: float,
+    ror: float,
+    dor: float,
+    inc: float = 90.0,
+    ecc: float = 0.0,
+    periastron: float = 90.0,
+    limb_dark: str = "uniform",
+    u: list = [],
+    params_out: bool = False,
+    **kwargs,
 ):
     """Generates a batman model of the exoplanet orbit"""
     params = batman.TransitParams()

@@ -1,4 +1,5 @@
 """Utilities for querying different databases for Target """
+
 import warnings
 from functools import lru_cache
 from typing import List, Union
@@ -140,8 +141,8 @@ def get_sky_catalog(
     gbpmagnitude_range: tuple = (-3, 20),
     limit=None,
     gaia_keys: list = [],
-    time: Time = Time.now()
-) -> dict :
+    time: Time = Time.now(),
+) -> dict:
     """
     Gets a catalog of coordinates on the sky based on an input RA, Dec, and radius as well as
     a magnitude range for Gaia. The user can also specify additional keywords to be grabbed
@@ -172,19 +173,21 @@ def get_sky_catalog(
         Dictionary of values from the Gaia archive for each keyword.
     """
 
-    base_keys = ["source_id",
-                 "ra",
-                 "dec",
-                 "parallax",
-                 "pmra",
-                 "pmdec",
-                 "radial_velocity",
-                 "ruwe",
-                 "phot_bp_mean_mag",
-                 "teff_gspphot",
-                 "logg_gspphot",
-                 "phot_g_mean_flux",
-                 "phot_g_mean_mag",]
+    base_keys = [
+        "source_id",
+        "ra",
+        "dec",
+        "parallax",
+        "pmra",
+        "pmdec",
+        "radial_velocity",
+        "ruwe",
+        "phot_bp_mean_mag",
+        "teff_gspphot",
+        "logg_gspphot",
+        "phot_g_mean_flux",
+        "phot_g_mean_mag",
+    ]
 
     all_keys = base_keys + gaia_keys
 
@@ -214,6 +217,7 @@ def get_sky_catalog(
     CIRCLE(COORD1(subquery.propagated_position_vector), COORD2(subquery.propagated_position_vector), {u.Quantity(radius, u.deg).value}))
     ORDER BY ang_sep ASC
     """
+    print(query_str)
     job = Gaia.launch_job_async(query_str, verbose=False)
     tbl = job.get_results()
     if len(tbl) == 0:
@@ -228,23 +232,16 @@ def get_sky_catalog(
         "ang_sep": tbl["ang_sep"].data.filled(np.nan) * u.deg,
     }
     cat["teff"] = (
-        tbl["teff_gspphot"].data.filled(
-            tbl["dr2_teff_val"].data.filled(np.nan)
-        )
-        * u.K
+        tbl["teff_gspphot"].data.filled(tbl["dr2_teff_val"].data.filled(np.nan)) * u.K
     )
-    cat["logg"] = tbl["logg_gspphot"].data.filled(
-        tbl["dr2_logg"].data.filled(np.nan)
-    )
+    cat["logg"] = tbl["logg_gspphot"].data.filled(tbl["dr2_logg"].data.filled(np.nan))
     cat["RUWE"] = tbl["ruwe"].data.filled(99)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         cat["coords"] = SkyCoord(
             ra=tbl["ra"].value.data * u.deg,
             dec=tbl["dec"].value.data * u.deg,
-            pm_ra_cosdec=tbl["pmra"].value.filled(fill_value=0)
-            * u.mas
-            / u.year,
+            pm_ra_cosdec=tbl["pmra"].value.filled(fill_value=0) * u.mas / u.year,
             pm_dec=tbl["pmdec"].value.filled(fill_value=0) * u.mas / u.year,
             obstime=Time.strptime("2016", "%Y"),
             distance=Distance(parallax=plx * u.mas, allow_negative=True),
@@ -286,7 +283,9 @@ def get_planets(
             planets_tab = NasaExoplanetArchive.query_object(name, table="pscomppars")
         elif ra is not None and dec is not None:
             planets_tab = NasaExoplanetArchive.query_region(
-                table="pscomppars", coordinates=SkyCoord(ra, dec, unit=u.deg), radius=radius
+                table="pscomppars",
+                coordinates=SkyCoord(ra, dec, unit=u.deg),
+                radius=radius,
             )
         else:
             raise ValueError
@@ -314,10 +313,14 @@ def get_planets(
             #         planets[planet]["pl_trandur"] = (
             #             planets[planet]["pl_trandur"].value * u.hour
             #         )
-            if planets_tab['pl_trandur'].unit == u.day:
-                planets_tab['pl_trandur'] = planets_tab['pl_trandur'].value * u.hour
-                planets_tab['pl_trandurerr1'] = planets_tab['pl_trandurerr1'].value * u.hour
-                planets_tab['pl_trandurerr2'] = planets_tab['pl_trandurerr2'].value * u.hour
+            if planets_tab["pl_trandur"].unit == u.day:
+                planets_tab["pl_trandur"] = planets_tab["pl_trandur"].value * u.hour
+                planets_tab["pl_trandurerr1"] = (
+                    planets_tab["pl_trandurerr1"].value * u.hour
+                )
+                planets_tab["pl_trandurerr2"] = (
+                    planets_tab["pl_trandurerr2"].value * u.hour
+                )
 
             if len(attrs) != 0:
                 planets_tab = planets_tab[attrs]

@@ -92,8 +92,10 @@ class NormalDistribution(Distribution):
         )
 
     def _repr_latex_(self):
-        return (f"{self.name} ({self.disttype}) {self.to_string(format='latex', subfmt='inline')} $\pm$ " +
-                f"{(self.sigma[0] * self.unit if len(self) == 1 else self.sigma * self.unit).to_string(format='latex', subfmt='inline')}")
+        return (
+            f"{self.name} ({self.disttype}) {self.to_string(format='latex', subfmt='inline')} $\pm$ "
+            + f"{(self.sigma[0] * self.unit if len(self) == 1 else self.sigma * self.unit).to_string(format='latex', subfmt='inline')}"
+        )
 
 
 class LogNormalDistribution(NormalDistribution):
@@ -159,5 +161,7 @@ class UniformDistribution(Distribution):
         )
 
     def _repr_latex_(self):
-        return (f"{self.name} ({self.disttype}) {self.to_string(format='latex', subfmt='inline')} $\pm$ " +
-                f"{(self.diff[0] * self.unit if len(self) == 1 else self.diff * self.unit).to_string(format='latex', subfmt='inline')}")
+        return (
+            f"{self.name} ({self.disttype}) {self.to_string(format='latex', subfmt='inline')} $\pm$ "
+            + f"{(self.diff[0] * self.unit if len(self) == 1 else self.diff * self.unit).to_string(format='latex', subfmt='inline')}"
+        )

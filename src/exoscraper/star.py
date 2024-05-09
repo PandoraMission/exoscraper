@@ -19,17 +19,17 @@ class Star(object):
     """
 
     def __init__(
-            self,
-            params: QTable,
-            ):
-        self.name = params['hostname'][0]
+        self,
+        params: QTable,
+    ):
+        self.name = params["hostname"][0]
 
         self.planets = []
-        for i, letter in enumerate(np.unique(params['pl_letter'])):
-            self.planets.append(Planet(params[params['pl_letter'] == str(letter)][0]))
+        for i, letter in enumerate(np.unique(params["pl_letter"])):
+            self.planets.append(Planet(params[params["pl_letter"] == str(letter)][0]))
             setattr(self, str(letter), self.planets[i])
 
-        good_inds = [col for col in params.columns if 'pl_' not in col]
+        good_inds = [col for col in params.columns if "pl_" not in col]
         # print(good_inds)
         # good_inds = good_inds + ['st_rad', 'st_teff']
         # print(good_inds)
@@ -37,15 +37,19 @@ class Star(object):
         # self._tab = params
 
         _ = [
-            setattr(
-                self,
-                c,
-                self._tab[c].filled(np.nan)
-                if isinstance(self._tab[c], u.Quantity)
-                else u.Quantity(self._tab[c]),
+            (
+                setattr(
+                    self,
+                    c,
+                    (
+                        self._tab[c].filled(np.nan)
+                        if isinstance(self._tab[c], u.Quantity)
+                        else u.Quantity(self._tab[c])
+                    ),
+                )
+                if isinstance(self._tab[c], (u.Quantity, float, int))
+                else setattr(self, c, self._tab[c])
             )
-            if isinstance(self._tab[c], (u.Quantity, float, int))
-            else setattr(self, c, self._tab[c])
             for c in list(self._tab.columns)
             if not (
                 c.endswith("err1")

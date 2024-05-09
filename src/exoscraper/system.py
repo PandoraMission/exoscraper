@@ -1,8 +1,10 @@
 """Classes for working with Targets"""
+
 from typing import Union
 
 import astropy.units as u
 import numpy as np
+
 # import pandas as pd
 import lightkurve as lk
 from astropy.coordinates import SkyCoord
@@ -25,16 +27,16 @@ class System(object):
     """DOCSTRING"""
 
     def __init__(
-            self,
-            name: str | None = None,
-            ra: u.Quantity | None = None,
-            dec: u.Quantity | None = None,
-            coord: SkyCoord | None = None,
-            # logg: u.Quantity | None = None,
-            # teff: u.Quantity | None = None,
-            bmag: u.Quantity | None = None,
-            jmag: u.Quantity | None = None,
-            ):
+        self,
+        name: str | None = None,
+        ra: u.Quantity | None = None,
+        dec: u.Quantity | None = None,
+        coord: SkyCoord | None = None,
+        # logg: u.Quantity | None = None,
+        # teff: u.Quantity | None = None,
+        bmag: u.Quantity | None = None,
+        jmag: u.Quantity | None = None,
+    ):
         """Ensures quantity conventions, generates Planet and Star classes, and validates input"""
         if all(x is None for x in [name, ra, dec, coord]):
             raise ValueError
@@ -52,18 +54,22 @@ class System(object):
         # multi-star systems and treats each individual star in the system as a single star.
         # Maybe change the star query to something else and query Exo Archive within Star?
         self.stars = []
-        for host in np.unique(self.sys_info['hostname']):
-            self.stars.append(Star(self.sys_info[self.sys_info['hostname'] == str(host)]))
+        for host in np.unique(self.sys_info["hostname"]):
+            self.stars.append(
+                Star(self.sys_info[self.sys_info["hostname"] == str(host)])
+            )
 
         # Will need to expand this to include binaries eventually
-        if self.sys_info[0]['sy_snum'] == 1:
+        if self.sys_info[0]["sy_snum"] == 1:
             self.__dict__.update(Star(self.sys_info).__dict__)
 
             for i in range(len(self.sys_info)):
-                setattr(self, str(self.sys_info['pl_letter'][i]), Planet(self.sys_info[i]))
+                setattr(
+                    self, str(self.sys_info["pl_letter"][i]), Planet(self.sys_info[i])
+                )
 
         # Loop through hostnames in query and assign their variables letter names
-        st_letters = ['A', 'B', 'C', 'D', 'E', 'F']
+        st_letters = ["A", "B", "C", "D", "E", "F"]
         for i in range(len(self.stars)):
             setattr(self, st_letters[i], self.stars[0])
 
@@ -157,22 +163,22 @@ class System(object):
         raise NotImplementedError
 
     def sample_timeseries(
-            self,
-            time,
-            t0: list = [],
-            period: list = [],
-            ror: list = [],
-            dor: list = [],
-            inc: list = [],
-            ecc: list = [],
-            periastron: list = [],
-            limb_dark: str = "uniform",
-            u: list = [],
-            iterations: int = 1,
-            seed: int | None = None,
-            median_flag: bool = False,
-            vals_out: bool = False,
-            **kwargs,
+        self,
+        time,
+        t0: list = [],
+        period: list = [],
+        ror: list = [],
+        dor: list = [],
+        inc: list = [],
+        ecc: list = [],
+        periastron: list = [],
+        limb_dark: str = "uniform",
+        u: list = [],
+        iterations: int = 1,
+        seed: int | None = None,
+        median_flag: bool = False,
+        vals_out: bool = False,
+        **kwargs,
     ):
         """
         Passes known system information to exoplanet to generate BATMAN model. Samples a single
@@ -219,16 +225,32 @@ class System(object):
             Flag determining whether the parameter values used in each timeseries model will be returned. If
             set to True, the function will return two outputs.
         """
-        par_names = ['pl_tranmid', 'pl_orbper', 'pl_ratror', 'pl_ratdor', 'pl_orbincl', 'pl_orbeccen', 'pl_orblper']
-        pars_in = {'t0': t0, 'period': period, 'ror': ror, 'dor': dor, 'inc': inc, 'ecc': ecc, 'peri': periastron}
+        par_names = [
+            "pl_tranmid",
+            "pl_orbper",
+            "pl_ratror",
+            "pl_ratdor",
+            "pl_orbincl",
+            "pl_orbeccen",
+            "pl_orblper",
+        ]
+        pars_in = {
+            "t0": t0,
+            "period": period,
+            "ror": ror,
+            "dor": dor,
+            "inc": inc,
+            "ecc": ecc,
+            "peri": periastron,
+        }
         vars = {
-            't0': np.ones((iterations, len(self.planets))),
-            'period': np.ones((iterations, len(self.planets))),
-            'ror': np.ones((iterations, len(self.planets))),
-            'dor': np.ones((iterations, len(self.planets))),
-            'inc': np.ones((iterations, len(self.planets))),
-            'ecc': np.ones((iterations, len(self.planets))),
-            'peri': np.ones((iterations, len(self.planets))),
+            "t0": np.ones((iterations, len(self.planets))),
+            "period": np.ones((iterations, len(self.planets))),
+            "ror": np.ones((iterations, len(self.planets))),
+            "dor": np.ones((iterations, len(self.planets))),
+            "inc": np.ones((iterations, len(self.planets))),
+            "ecc": np.ones((iterations, len(self.planets))),
+            "peri": np.ones((iterations, len(self.planets))),
         }
         timeseries = np.zeros((iterations, len(time)))
 
@@ -237,21 +259,31 @@ class System(object):
                 if len(pars_in[par]) == len(self.planets):
                     vars[par] *= pars_in[par]
                 else:
-                    vars[par] *= [getattr(self[0][t], par_names[p]).value for t in range(len(self.planets))]
+                    vars[par] *= [
+                        getattr(self[0][t], par_names[p]).value
+                        for t in range(len(self.planets))
+                    ]
         else:
-            vars['peri'] = [getattr(self[0][t], 'pl_orblper').value for t in range(len(self.planets))]
+            vars["peri"] = [
+                getattr(self[0][t], "pl_orblper").value
+                for t in range(len(self.planets))
+            ]
             for p, par in enumerate(vars.keys()):
                 if len(pars_in[par]) == 0:
-                    vars[par] *= np.array([
-                        getattr(
-                            self[0][t],
-                            par_names[p]
-                        ).distribution.sample(seed=seed, size=iterations).value for t in range(len(self.planets))
-                    ]).T
+                    vars[par] *= np.array(
+                        [
+                            getattr(self[0][t], par_names[p])
+                            .distribution.sample(seed=seed, size=iterations)
+                            .value
+                            for t in range(len(self.planets))
+                        ]
+                    ).T
                 elif len(pars_in[par]) == len(self.planets):
                     vars[par] *= pars_in[par]
                 else:
-                    raise ValueError('Number of parameter values provided must match number of planets')
+                    raise ValueError(
+                        "Number of parameter values provided must match number of planets"
+                    )
 
         for i in range(iterations):
             flux = np.zeros(len(time))
@@ -259,17 +291,17 @@ class System(object):
             for n, pl in enumerate(self.planets):
                 model, params = get_batman_model(
                     time=time,
-                    t0=vars['t0'][i][n],
-                    per=vars['period'][i][n],
-                    ror=vars['ror'][i][n],
-                    dor=vars['dor'][i][n],
-                    inc=vars['inc'][i][n],
-                    ecc=vars['ecc'][i][n],
-                    periastron=vars['peri'][i][n],
+                    t0=vars["t0"][i][n],
+                    per=vars["period"][i][n],
+                    ror=vars["ror"][i][n],
+                    dor=vars["dor"][i][n],
+                    inc=vars["inc"][i][n],
+                    ecc=vars["ecc"][i][n],
+                    periastron=vars["peri"][i][n],
                     limb_dark=limb_dark,
                     u=u,
                     params_out=True,
-                    **kwargs
+                    **kwargs,
                 )
                 setattr(pl, "model", model)
                 flux += model.light_curve(params)

@@ -1,4 +1,5 @@
 """Classes to work specifically with planets"""
+
 from dataclasses import dataclass
 
 import astropy.units as u
@@ -19,11 +20,11 @@ class Planet(object):
     """
 
     def __init__(
-            self,
-            params: QTable,
-            ):
-        self.hostname = params['hostname']
-        self.letter = params['pl_letter']
+        self,
+        params: QTable,
+    ):
+        self.hostname = params["hostname"]
+        self.letter = params["pl_letter"]
         # tab = get_nexsci_tab(hostname)
         # tab = tab[tab["pl_letter"] == letter]
         # if len(tab) == 0:
@@ -36,15 +37,19 @@ class Planet(object):
         self._tab = params  # [good_inds]
         # return
         _ = [
-            setattr(
-                self,
-                c,
-                self._tab[c].filled(np.nan)
-                if isinstance(self._tab[c], u.Quantity)
-                else u.Quantity(self._tab[c]),
+            (
+                setattr(
+                    self,
+                    c,
+                    (
+                        self._tab[c].filled(np.nan)
+                        if isinstance(self._tab[c], u.Quantity)
+                        else u.Quantity(self._tab[c])
+                    ),
+                )
+                if isinstance(self._tab[c], (u.Quantity, float, int))
+                else setattr(self, c, self._tab[c])
             )
-            if isinstance(self._tab[c], (u.Quantity, float, int))
-            else setattr(self, c, self._tab[c])
             for c in list(self._tab.columns)
             if not (
                 c.endswith("err1")
@@ -218,7 +223,7 @@ class Planet(object):
                     if self._tab[c] != "" and not np.isnan(attr.value):
                         reflink = None
                         if (c[:-4] + "_reflink") in self._tab.columns:
-                            reflink = (self._tab[c[:-4] + "_reflink"])
+                            reflink = self._tab[c[:-4] + "_reflink"]
                         else:
                             setattr(attr, "reference", None)
                         #     # attr.reference = np.nan
@@ -226,7 +231,7 @@ class Planet(object):
                         # print(type(attr.value))
                         # print(np.isnan(attr.value) or attr.value == np.nan)
                         # print(attr.__dict__)
-                        if attr.reference == 'Calculated' and attr.value != np.nan:
+                        if attr.reference == "Calculated" and attr.value != np.nan:
                             err = attr.err
                         else:
                             err = max(abs(attr.err1.value), abs(attr.err2.value))
@@ -238,7 +243,7 @@ class Planet(object):
                                 err,
                                 name=c[:-4],
                                 unit=str(attr.unit),
-                                reference=reflink
+                                reference=reflink,
                             ),
                         )
             if c.endswith("lim"):
@@ -256,7 +261,7 @@ class Planet(object):
                             name=c[:-3],
                             unit=str(attr.unit),
                             reference=reflink,
-                        )
+                        ),
                     )
 
     def __repr__(self):
