@@ -27,14 +27,14 @@ class System(object):
 
     def __init__(
         self,
-        name: str | None = None,
-        ra: u.Quantity | None = None,
-        dec: u.Quantity | None = None,
-        coord: SkyCoord | None = None,
+        name: Union[str, None] = None,
+        ra: Union[u.Quantity, None] = None,
+        dec: Union[u.Quantity, None] = None,
+        coord: Union[SkyCoord, None] = None,
         # logg: u.Quantity | None = None,
         # teff: u.Quantity | None = None,
-        bmag: u.Quantity | None = None,
-        jmag: u.Quantity | None = None,
+        bmag: Union[u.Quantity, None] = None,
+        jmag: Union[u.Quantity, None] = None,
     ):
         """Ensures quantity conventions, generates Planet and Star classes, and validates input"""
         if all(x is None for x in [name, ra, dec, coord]):
@@ -174,7 +174,7 @@ class System(object):
         limb_dark: str = "uniform",
         u: list = [],
         iterations: int = 1,
-        seed: int | None = None,
+        seed: Union[int, None] = None,
         median_flag: bool = False,
         vals_out: bool = False,
         **kwargs,

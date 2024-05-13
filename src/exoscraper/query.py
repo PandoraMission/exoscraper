@@ -259,9 +259,9 @@ def get_sky_catalog(
 @lru_cache
 def get_planets(
     #    coord: SkyCoord,
-    ra: float | None = None,
-    dec: float | None = None,
-    name: str | None = None,
+    ra: Union[float, None] = None,
+    dec: Union[float, None] = None,
+    name: Union[str, None] = None,
     radius: u.Quantity = 20 * u.arcsecond,
     attrs: List = [],
     # attrs: List = ["pl_orbper", "pl_tranmid", "pl_trandur", "pl_trandep"],
