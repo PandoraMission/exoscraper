@@ -30,11 +30,7 @@ class Star(object):
             setattr(self, str(letter), self.planets[i])
 
         good_inds = [col for col in params.columns if "pl_" not in col]
-        # print(good_inds)
-        # good_inds = good_inds + ['st_rad', 'st_teff']
-        # print(good_inds)
         self._tab = params[0][good_inds]
-        # self._tab = params
 
         _ = [
             (
