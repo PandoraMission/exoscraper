@@ -80,7 +80,7 @@ def get_SED(coord: Union[str, tuple], radius: Union[float, u.Quantity] = 2) -> d
 
 
 @lru_cache
-def get_timeseries(ra: u.Quantity, dec: u.Quantity) -> np.array:
+def get_timeseries(ra: u.Quantity, dec: u.Quantity) -> np.ndarray:
     """Function returns all the possible time series
     of an object as a Lightkurve object"""
 
