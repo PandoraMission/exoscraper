@@ -25,17 +25,7 @@ class Planet(object):
     ):
         self.hostname = params["hostname"]
         self.letter = params["pl_letter"]
-        # tab = get_nexsci_tab(hostname)
-        # tab = tab[tab["pl_letter"] == letter]
-        # if len(tab) == 0:
-        #     raise ValueError("No planet found")
-        # self._tab = tab[0]
-        # good_inds = [col for col in params.columns if 'pl_' in col]
-        # print(good_inds)
-        # good_inds = good_inds + ['st_rad', 'st_teff']
-        # print(good_inds)
-        self._tab = params  # [good_inds]
-        # return
+        self._tab = params
         _ = [
             (
                 setattr(
@@ -85,6 +75,15 @@ class Planet(object):
                             setattr(attr, "reference", "Archive Calculation")
                         elif "exofop" in ref.lower():
                             setattr(attr, "reference", "ExoFOP")
+                        elif "arxiv.org" in ref.lower():
+                            ref = self._tab[c].split("href=")[1].split(" target=ref")[0]
+                            setattr(attr, "reference", ref)
+                            setattr(
+                                attr,
+                                "reference_name",
+                                self._tab[c].split("=ref>")[1].split("</a")[0],
+                            )
+                            setattr(attr, "reference_link", ref)
             if c.endswith("err1"):
                 attr = getattr(self, c[:-4])
                 if isinstance(attr, u.Quantity):
@@ -216,7 +215,7 @@ class Planet(object):
     def _make_distributions(self):
         """Hidden function to build distributions for each parameter"""
         for c in self._tab.columns:
-            # print(c)
+            print(c)
             if c.endswith("err1"):
                 attr = getattr(self, c[:-4])
                 if isinstance(attr, u.Quantity):
@@ -224,13 +223,14 @@ class Planet(object):
                         reflink = None
                         if (c[:-4] + "_reflink") in self._tab.columns:
                             reflink = self._tab[c[:-4] + "_reflink"]
+                            print(self._tab[c[:-4] + "_reflink"])
                         else:
                             setattr(attr, "reference", None)
-                        #     # attr.reference = np.nan
-                        # print(attr)
-                        # print(type(attr.value))
-                        # print(np.isnan(attr.value) or attr.value == np.nan)
-                        # print(attr.__dict__)
+                        print(attr)
+                        print(type(attr.value))
+                        print(np.isnan(attr.value) or attr.value == np.nan)
+                        print(attr.reference)
+                        print(attr.__dict__)
                         if attr.reference == "Calculated" and attr.value != np.nan:
                             err = attr.err
                         else:
