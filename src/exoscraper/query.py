@@ -5,7 +5,6 @@ from functools import lru_cache
 from typing import List, Union
 
 import astropy.units as u
-import lightkurve as lk
 import numpy as np
 import pandas as pd
 from astropy.constants import c as speedoflight
@@ -81,7 +80,7 @@ def get_SED(coord: Union[str, tuple], radius: Union[float, u.Quantity] = 2) -> d
 
 
 @lru_cache
-def get_timeseries(ra: u.Quantity, dec: u.Quantity) -> lk.LightCurve:
+def get_timeseries(ra: u.Quantity, dec: u.Quantity) -> np.array:
     """Function returns all the possible time series
     of an object as a Lightkurve object"""
 
