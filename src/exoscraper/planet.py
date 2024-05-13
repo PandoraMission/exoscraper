@@ -215,7 +215,6 @@ class Planet(object):
     def _make_distributions(self):
         """Hidden function to build distributions for each parameter"""
         for c in self._tab.columns:
-            print(c)
             if c.endswith("err1"):
                 attr = getattr(self, c[:-4])
                 if isinstance(attr, u.Quantity):
@@ -223,14 +222,8 @@ class Planet(object):
                         reflink = None
                         if (c[:-4] + "_reflink") in self._tab.columns:
                             reflink = self._tab[c[:-4] + "_reflink"]
-                            print(self._tab[c[:-4] + "_reflink"])
                         else:
                             setattr(attr, "reference", None)
-                        print(attr)
-                        print(type(attr.value))
-                        print(np.isnan(attr.value) or attr.value == np.nan)
-                        print(attr.reference)
-                        print(attr.__dict__)
                         if attr.reference == "Calculated" and attr.value != np.nan:
                             err = attr.err
                         else:
