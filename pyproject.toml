@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "exoscraper"
-version = "0.1.0"
+version = "0.2.0"
 description = "Package to scrape data on exoplanet targets to help you build your mission."
 authors = ["Your Name <you@example.com>"]
 license = "MIT"
@@ -8,9 +8,12 @@ readme = "docs/README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-lightkurve = "^2.4.0"
 rich = "^13.4.2"
 beautifulsoup4 = "^4.12.2"
+batman-package = "^2.4.9"
+astropy = "^6.0.0"
+pandas = "^2.1.3"
+astroquery = "^0.4.6"
 
 
 [tool.poetry.group.dev.dependencies]

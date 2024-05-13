@@ -1,20 +1,23 @@
 """Utilities for querying different databases for Target """
+
 import warnings
 from functools import lru_cache
-from typing import List, Optional, Union
+from typing import List, Union
 
 import astropy.units as u
-import lightkurve as lk
 import numpy as np
 import pandas as pd
 from astropy.constants import c as speedoflight
 from astropy.coordinates import Distance, SkyCoord
 from astropy.io import votable
+from astropy.table import QTable
 from astropy.time import Time
 from astropy.utils.data import download_file
 from astroquery import log as asqlog
 from astroquery.gaia import Gaia
 from astroquery.ipac.nexsci.nasa_exoplanet_archive import NasaExoplanetArchive
+from bs4 import BeautifulSoup
+import requests
 
 from . import log
 
@@ -77,7 +80,7 @@ def get_SED(coord: Union[str, tuple], radius: Union[float, u.Quantity] = 2) -> d
 
 
 @lru_cache
-def get_timeseries(ra: u.Quantity, dec: u.Quantity) -> lk.LightCurve:
+def get_timeseries(ra: u.Quantity, dec: u.Quantity) -> np.ndarray:
     """Function returns all the possible time series
     of an object as a Lightkurve object"""
 
@@ -131,12 +134,45 @@ def get_params(
 
 @lru_cache
 def get_sky_catalog(
-    ra: float = 210.8023,
-    dec: float = 54.349,
+    ra: float,
+    dec: float,
     radius: float = 0.155,
     gbpmagnitude_range: tuple = (-3, 20),
-    limit: Optional = None,
-    gaia_keys: List = [
+    limit=None,
+    gaia_keys: list = [],
+    time: Time = Time.now(),
+) -> dict:
+    """
+    Gets a catalog of coordinates on the sky based on an input RA, Dec, and radius as well as
+    a magnitude range for Gaia. The user can also specify additional keywords to be grabbed
+    from Gaia catalog.
+
+    Parameters
+    ----------
+    ra : float
+        Right Ascension of the center of the query radius in degrees.
+    dec : float
+        Declination of the center of the query radius in degrees.
+    radius : float
+        Radius centered on ra and dec that will be queried in degrees.
+    gbpmagnitude_range : tuple
+        Magnitude limits for the query. Targets outside of this range will not be included in
+        the final output dictionary.
+    limit : int
+        Maximum number of targets from query that will be included in output dictionary. If a
+        limit is specified, targets will be included based on proximity to specified ra and dec.
+    gaia_keys : list
+        List of additional Gaia archive columns to include in the final output dictionary.
+    time : astropy.Time object
+        Time at which to evaluate the positions of the targets in the output dictionary.
+
+    Returns
+    -------
+    cat : dict
+        Dictionary of values from the Gaia archive for each keyword.
+    """
+
+    base_keys = [
         "source_id",
         "ra",
         "dec",
@@ -148,16 +184,15 @@ def get_sky_catalog(
         "phot_bp_mean_mag",
         "teff_gspphot",
         "logg_gspphot",
-    ],
-) -> SkyCoord:
-    """Gets a catalog of coordinates on the sky based on an input ra, dec and radius in units of degrees.
+        "phot_g_mean_flux",
+        "phot_g_mean_mag",
+    ]
 
-    RA and Dec are assumed to be in epoch J2000, this function will propagate the Gaia coordinates to J2000.
-    """
+    all_keys = base_keys + gaia_keys
 
     query_str = f"""
     SELECT {f'TOP {limit} ' if limit is not None else ''}* FROM (
-        SELECT gaia.{', gaia.'.join(gaia_keys)}, dr2.teff_val AS dr2_teff_val,
+        SELECT gaia.{', gaia.'.join(all_keys)}, dr2.teff_val AS dr2_teff_val,
         dr2.rv_template_logg AS dr2_logg, tmass.j_m, tmass.j_msigcom, tmass.ph_qual, DISTANCE(
         POINT({u.Quantity(ra, u.deg).value}, {u.Quantity(dec, u.deg).value}),
         POINT(gaia.ra, gaia.dec)) AS ang_sep,
@@ -181,6 +216,7 @@ def get_sky_catalog(
     CIRCLE(COORD1(subquery.propagated_position_vector), COORD2(subquery.propagated_position_vector), {u.Quantity(radius, u.deg).value}))
     ORDER BY ang_sep ASC
     """
+    # print(query_str)
     job = Gaia.launch_job_async(query_str, verbose=False)
     tbl = job.get_results()
     if len(tbl) == 0:
@@ -190,6 +226,8 @@ def get_sky_catalog(
     cat = {
         "jmag": tbl["j_m"].data.filled(np.nan),
         "bmag": tbl["phot_bp_mean_mag"].data.filled(np.nan),
+        "gmag": tbl["phot_g_mean_mag"].data.filled(np.nan),
+        "gflux": tbl["phot_g_mean_flux"].data.filled(np.nan),
         "ang_sep": tbl["ang_sep"].data.filled(np.nan) * u.deg,
     }
     cat["teff"] = (
@@ -199,7 +237,6 @@ def get_sky_catalog(
     cat["RUWE"] = tbl["ruwe"].data.filled(99)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        # Double check the obstime is J2000
         cat["coords"] = SkyCoord(
             ra=tbl["ra"].value.data * u.deg,
             dec=tbl["dec"].value.data * u.deg,
@@ -210,20 +247,24 @@ def get_sky_catalog(
             radial_velocity=tbl["radial_velocity"].value.filled(fill_value=0)
             * u.km
             / u.s,
-        ).apply_space_motion(Time.now())
+        ).apply_space_motion(time)
     cat["source_id"] = np.asarray(
         [f"Gaia DR3 {i}" for i in tbl["source_id"].value.data]
     )
+    for key in gaia_keys:
+        cat[key] = tbl[key].data.filled(np.nan)
     return cat
 
 
 @lru_cache
 def get_planets(
     #    coord: SkyCoord,
-    ra: float,
-    dec: float,
+    ra: float | None = None,
+    dec: float | None = None,
+    name: str | None = None,
     radius: u.Quantity = 20 * u.arcsecond,
-    attrs: List = ["pl_orbper", "pl_tranmid", "pl_trandur", "pl_trandep"],
+    attrs: List = [],
+    # attrs: List = ["pl_orbper", "pl_tranmid", "pl_trandur", "pl_trandep"],
 ) -> dict:
     """
     Returns a dictionary of dictionaries with planet parameters.
@@ -237,25 +278,61 @@ def get_planets(
     #     coord2000 = coord
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        planets_tab = NasaExoplanetArchive.query_region(
-            table="pscomppars", coordinates=SkyCoord(ra, dec, unit=u.deg), radius=radius
-        )
-        if len(planets_tab) != 0:
-            planets = {
-                letter: {
-                    attr: planets_tab[planets_tab["pl_letter"] == letter][attr][
-                        0
-                    ].unmasked
-                    for attr in attrs
-                }
-                for letter in planets_tab["pl_letter"]
-            }
-            # There's an error in the NASA exoplanet archive units that makes duration "days" instead of "hours"
-            for planet in planets:
-                if "pl_trandur" in planets[planet].keys():
-                    planets[planet]["pl_trandur"] = (
-                        planets[planet]["pl_trandur"].value * u.hour
-                    )
+        if name is not None:
+            planets_tab = NasaExoplanetArchive.query_object(name, table="pscomppars")
+        elif ra is not None and dec is not None:
+            planets_tab = NasaExoplanetArchive.query_region(
+                table="pscomppars",
+                coordinates=SkyCoord(ra, dec, unit=u.deg),
+                radius=radius,
+            )
         else:
-            planets = {}
-    return planets
+            raise ValueError
+        if len(planets_tab) != 0:
+            # if len(attrs) == 0:
+            #     attrs = planets_tab.keys()
+            # else:
+            #     attrs = List[attrs]
+            # planets = {
+            #     letter: {
+            #         attr: planets_tab[planets_tab["pl_letter"] == letter][attr][
+            #             0
+            #         ]  # .unmasked
+            #         for attr in attrs
+            #     }
+            #     for letter in planets_tab["pl_letter"]
+            # }
+            # planets = planets_tab.to_pandas()
+            # planets = planets.to_dict(orient='records')
+            # print(planets)
+
+            # There's an error in the NASA exoplanet archive units that makes duration "days" instead of "hours"
+            # for planet in planets:
+            #     if "pl_trandur" in planets[planet].keys():
+            #         planets[planet]["pl_trandur"] = (
+            #             planets[planet]["pl_trandur"].value * u.hour
+            #         )
+            if planets_tab["pl_trandur"].unit == u.day:
+                planets_tab["pl_trandur"] = planets_tab["pl_trandur"].value * u.hour
+                planets_tab["pl_trandurerr1"] = (
+                    planets_tab["pl_trandurerr1"].value * u.hour
+                )
+                planets_tab["pl_trandurerr2"] = (
+                    planets_tab["pl_trandurerr2"].value * u.hour
+                )
+
+            if len(attrs) != 0:
+                planets_tab = planets_tab[attrs]
+
+        else:
+            planets_tab = QTable()
+
+    return planets_tab
+
+
+@lru_cache
+def get_citation(bibcode):
+    """Goes to NASA ADS and webscrapes the bibtex citation for a given bibcode"""
+    d = requests.get(f"https://ui.adsabs.harvard.edu/abs/{bibcode}/exportcitation")
+    soup = BeautifulSoup(d.content, "html.parser")
+    return soup.find("textarea").text

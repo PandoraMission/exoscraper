@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 # Standard library
 import os  # noqa
 
@@ -16,4 +16,4 @@ log = logging.getLogger("exoscraper")
 log.addHandler(RichHandler(markup=True))
 log.setLevel("INFO")
 
-from .target import Target  # noqa
+from .system import System  # noqa
