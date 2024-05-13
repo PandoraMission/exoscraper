@@ -6,7 +6,6 @@ import astropy.units as u
 import numpy as np
 
 # import pandas as pd
-import lightkurve as lk
 from astropy.coordinates import SkyCoord
 
 from .query import get_planets, get_SED, get_sky_catalog
@@ -148,7 +147,7 @@ class System(object):
         raise NotImplementedError
 
     @property
-    def transit_model(self) -> lk.LightCurve:
+    def transit_model(self) -> np.ndarray:
         # generate transit model using lightkurve
         # return LightCurve object
         raise NotImplementedError
