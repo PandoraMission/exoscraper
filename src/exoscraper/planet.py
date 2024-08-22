@@ -115,7 +115,7 @@ class Planet(object):
         self._fix_ratdor()
         self._fix_ratror()
         self._fix_eqt()
-        self._make_distributions()
+        # self._make_distributions()
         self.references = get_ref_dict(self._tab)
         self.acknowledgements = [
             "This research has made use of the NASA Exoplanet Archive, which is operated by the"
@@ -180,6 +180,8 @@ class Planet(object):
             ) ** 0.5 * a
             a.reference = "Calculated"
             self.pl_orbsmax = a
+        elif self.pl_orbsmax.unit is not u.AU:
+            self.pl_orbsmax._unit = u.AU
 
     def _fix_ratdor(self):
         if not np.isfinite(self.pl_ratdor):
@@ -220,10 +222,16 @@ class Planet(object):
                 if isinstance(attr, u.Quantity):
                     if self._tab[c] != "" and not np.isnan(attr.value):
                         reflink = None
+                        # print(c[:-4])
+                        # print(attr)
                         if (c[:-4] + "_reflink") in self._tab.columns:
                             reflink = self._tab[c[:-4] + "_reflink"]
+                            # print(self._tab[c[:-4] + "_reflink"])
+                            # print(c[:-4] + "_reflink")
                         else:
                             setattr(attr, "reference", None)
+                            # print('here')
+                            # print(attr.reference)
                         if attr.reference == "Calculated" and attr.value != np.nan:
                             err = attr.err
                         else:
