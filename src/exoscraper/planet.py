@@ -222,21 +222,10 @@ class Planet(object):
                 if isinstance(attr, u.Quantity):
                     if self._tab[c] != "" and not np.isnan(attr.value):
                         reflink = None
-                        # print(c[:-4])
-                        # print(attr)
-                        # print(self._tab[c[:-4] + "_reflink"])
                         if ((c[:-4] + "_reflink") in self._tab.columns) & (self._tab[c[:-4] + "_reflink"] != ''):
                             reflink = self._tab[c[:-4] + "_reflink"]
-                            # print(self._tab[c[:-4] + "_reflink"])
-                            # print(c[:-4] + "_reflink")
-                            # if self._tab[c[:-4] + "_reflink"] == '':
-                            #     print('here')
                         else:
                             setattr(attr, "reference", None)
-                            # print('here')
-                            # print(attr.reference)
-                            # print(attr.__dict__)
-                        # if attr.reference == "Calculated" and attr.value != np.nan:
                         if hasattr(attr, 'err1'):
                             err = max(abs(attr.err1.value), abs(attr.err2.value))
                         else:
