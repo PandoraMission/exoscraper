@@ -115,7 +115,7 @@ class Planet(object):
         self._fix_ratdor()
         self._fix_ratror()
         self._fix_eqt()
-        # self._make_distributions()
+        self._make_distributions()
         self.references = get_ref_dict(self._tab)
         self.acknowledgements = [
             "This research has made use of the NASA Exoplanet Archive, which is operated by the"
@@ -224,18 +224,23 @@ class Planet(object):
                         reflink = None
                         # print(c[:-4])
                         # print(attr)
-                        if (c[:-4] + "_reflink") in self._tab.columns:
+                        # print(self._tab[c[:-4] + "_reflink"])
+                        if ((c[:-4] + "_reflink") in self._tab.columns) & (self._tab[c[:-4] + "_reflink"] != ''):
                             reflink = self._tab[c[:-4] + "_reflink"]
                             # print(self._tab[c[:-4] + "_reflink"])
                             # print(c[:-4] + "_reflink")
+                            # if self._tab[c[:-4] + "_reflink"] == '':
+                            #     print('here')
                         else:
                             setattr(attr, "reference", None)
                             # print('here')
                             # print(attr.reference)
-                        if attr.reference == "Calculated" and attr.value != np.nan:
-                            err = attr.err
-                        else:
+                            # print(attr.__dict__)
+                        # if attr.reference == "Calculated" and attr.value != np.nan:
+                        if hasattr(attr, 'err1'):
                             err = max(abs(attr.err1.value), abs(attr.err2.value))
+                        else:
+                            err = attr.err
                         setattr(
                             attr,
                             "distribution",
