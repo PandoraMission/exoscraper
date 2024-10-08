@@ -216,7 +216,6 @@ def get_sky_catalog(
     CIRCLE(COORD1(subquery.propagated_position_vector), COORD2(subquery.propagated_position_vector), {u.Quantity(radius, u.deg).value}))
     ORDER BY ang_sep ASC
     """
-    print(query_str)
     job = Gaia.launch_job_async(query_str, verbose=False)
     tbl = job.get_results()
     if len(tbl) == 0:
