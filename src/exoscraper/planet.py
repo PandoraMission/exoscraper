@@ -59,7 +59,9 @@ class Planet(object):
                 attr = getattr(self, "_".join(c.split("_")[:-1]))
                 if isinstance(attr, u.Quantity):
                     if self._tab[c] != "":
-                        ref = str(self._tab[c].split("href=")[1].split(" target=ref")[0])
+                        ref = str(
+                            self._tab[c].split("href=")[1].split(" target=ref")[0]
+                        )
                         if "ui.adsabs" in ref.lower():
                             # print(ref.split("abs/")[1].split("/")[0])
                             # print(ref)
