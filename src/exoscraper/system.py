@@ -7,6 +7,8 @@ import numpy as np
 
 # import pandas as pd
 from astropy.coordinates import SkyCoord
+from astropy.table import QTable
+from astropy.time import Time
 
 from .query import get_planets, get_SED, get_sky_catalog
 from .planet import Planet
@@ -31,22 +33,51 @@ class System(object):
         ra: Union[u.Quantity, None] = None,
         dec: Union[u.Quantity, None] = None,
         coord: Union[SkyCoord, None] = None,
-        # logg: u.Quantity | None = None,
-        # teff: u.Quantity | None = None,
+        logg: Union[u.Quantity, None] = None,
+        teff: Union[u.Quantity, None] = None,
         bmag: Union[u.Quantity, None] = None,
         jmag: Union[u.Quantity, None] = None,
+        time: Time = Time.now(),
     ):
         """Ensures quantity conventions, generates Planet and Star classes, and validates input"""
         if all(x is None for x in [name, ra, dec, coord]):
-            raise ValueError
+            raise ValueError("Coordinate or name must be provided!")
         self.name, self.coord, self.bmag, self.jmag = (name, coord, bmag, jmag)
         self.ra, self.dec = u.Quantity(ra, u.deg), u.Quantity(dec, u.deg)
-        # self.teff = u.Quantity(teff, u.K)
-        # self.logg = u.Quantity(logg)
+        self.teff = u.Quantity(teff, u.K)
+        self.logg = u.Quantity(logg)
+        self.coord = coord
+
+        # Processing RA and Dec input
+        if self.ra is None and self.dec is None:
+            if coord is None:
+                self.coord = SkyCoord.from_name(name)
+            self.ra, self.dec = u.Quantity(self.coord.ra, u.deg), u.Quantity(
+                self.coord.dec, u.deg
+            )
+
+        # Fetching Gaia DR3 values
+        self.sky_cat = get_sky_catalog(self.ra, self.dec, limit=1, time=time)
+        self.coord = self.sky_cat["coords"]
+
+        # Fetching any planets from the system
         if self.name is not None:
-            self.sys_info = get_planets(name=self.name)
-        elif self.ra is not None and self.dec is not None:
-            self.sys_info = get_planets(self.ra.value, self.dec.value)
+            sys_info = get_planets(name=self.name)
+        else:
+            sys_info = get_planets(self.ra.value, self.dec.value)
+
+        if len(sys_info.columns) == 0:
+            if "source_id" in self.sky_cat.keys():
+                self.sky_cat["hostname"] = self.sky_cat.pop("source_id")
+            self.sys_info = QTable(self.sky_cat)
+            self.sys_info["sy_snum"] = [1]
+        else:
+            self.sys_info = sys_info
+            self.sys_info["ra"] = self.ra
+            self.sys_info["dec"] = self.dec
+            self.sys_info["sy_pmra"] = self.coord.pm_ra_cosdec
+            self.sys_info["sy_pmdec"] = self.coord.pm_dec
+            self.sys_info["coord_epoch"] = time
 
         # Loop through the unique hostnames in the query and make Star objects out of them
         # Right now everything is funneled through an Exo Archive query which does not capture
@@ -62,10 +93,13 @@ class System(object):
         if self.sys_info[0]["sy_snum"] == 1:
             self.__dict__.update(Star(self.sys_info).__dict__)
 
-            for i in range(len(self.sys_info)):
-                setattr(
-                    self, str(self.sys_info["pl_letter"][i]), Planet(self.sys_info[i])
-                )
+            if len(sys_info.columns) > 0:
+                for i in range(len(self.sys_info)):
+                    setattr(
+                        self,
+                        str(self.sys_info["pl_letter"][i]),
+                        Planet(self.sys_info[i]),
+                    )
 
         # Loop through hostnames in query and assign their variables letter names
         st_letters = ["A", "B", "C", "D", "E", "F"]
@@ -88,25 +122,29 @@ class System(object):
         return self.stars[index]
 
     @staticmethod
-    def from_gaia(coord: Union[str, SkyCoord]):
+    def from_gaia(coord: Union[str, SkyCoord], time=Time.now()):
         name = None
         if isinstance(coord, str):
             name = coord
             coord = SkyCoord.from_name(coord)
         elif not isinstance(coord, SkyCoord):
             raise ValueError("`coord` must be a `SkyCoord` or a name string.")
-        cat = get_sky_catalog(coord.ra, coord.dec, radius=5 * u.arcsecond, limit=1)
+        # print(coord)
+        cat = get_sky_catalog(
+            coord.ra, coord.dec, radius=5 * u.arcsecond, limit=1, time=time
+        )
         if name is None:
             name = cat["source_id"][0]
         return System(
             name=name,
             ra=cat["coords"][0].ra,
             dec=cat["coords"][0].dec,
-            # logg=cat["logg"][0],
-            # teff=cat["teff"][0],
+            logg=cat["logg"][0],
+            teff=cat["teff"][0],
             bmag=cat["bmag"][0],
             jmag=cat["jmag"][0],
             coord=cat["coords"][0],
+            time=time,
         )
 
     @staticmethod
@@ -114,11 +152,11 @@ class System(object):
         raise NotImplementedError
 
     @staticmethod
-    def from_name(name: str):
+    def from_name(name: str, time=Time.now()):
         if not isinstance(name, str):
             raise ValueError("`name` must be a `string`.")
         else:
-            return System.from_gaia(coord=name)
+            return System.from_gaia(coord=name, time=time)
 
     @property
     def SED(self) -> dict:
