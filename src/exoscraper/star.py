@@ -1,6 +1,7 @@
 """Defines the dataclass to hold stellar information"""
 
 from dataclasses import dataclass
+from typing import Union, Dict
 
 import astropy.units as u
 import numpy as np
@@ -20,14 +21,20 @@ class Star(object):
 
     def __init__(
         self,
-        params: QTable,
+        params: Union[QTable, Dict],
     ):
+        if type(params) is Dict:
+            params = QTable(params)
+
         self.name = params["hostname"][0]
 
-        self.planets = []
-        for i, letter in enumerate(np.unique(params["pl_letter"])):
-            self.planets.append(Planet(params[params["pl_letter"] == str(letter)][0]))
-            setattr(self, str(letter), self.planets[i])
+        if "pl_letter" in params.columns:
+            self.planets = []
+            for i, letter in enumerate(np.unique(params["pl_letter"])):
+                self.planets.append(
+                    Planet(params[params["pl_letter"] == str(letter)][0])
+                )
+                setattr(self, str(letter), self.planets[i])
 
         good_inds = [col for col in params.columns if "pl_" not in col]
         self._tab = params[0][good_inds]
@@ -38,7 +45,7 @@ class Star(object):
                     self,
                     c,
                     (
-                        self._tab[c].filled(np.nan)
+                        np.ma.MaskedArray(self._tab[c]).filled(np.nan)
                         if isinstance(self._tab[c], u.Quantity)
                         else u.Quantity(self._tab[c])
                     ),
@@ -100,7 +107,8 @@ class Star(object):
                         if hasattr(attr, e):
                             setattr(attr, e, getattr(attr, e) * np.nan)
 
-        self.references = get_ref_dict(self._tab)
+        if any([c.endswith("reflink") for c in self._tab.columns]):
+            self.references = get_ref_dict(self._tab)
         self.acknowledgements = [
             "This research has made use of the NASA Exoplanet Archive, which is operated by the"
             "  California Institute of Technology, under contract with the National Aeronautics "
