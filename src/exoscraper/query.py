@@ -1,8 +1,9 @@
-"""Utilities for querying different databases for Target """
+"""Utilities for querying different databases for Target"""
 
 import warnings
 from functools import lru_cache
 from typing import List, Union
+import json
 
 import astropy.units as u
 import numpy as np
@@ -16,7 +17,8 @@ from astropy.utils.data import download_file
 from astroquery import log as asqlog
 from astroquery.gaia import Gaia
 from astroquery.ipac.nexsci.nasa_exoplanet_archive import NasaExoplanetArchive
-from bs4 import BeautifulSoup
+
+# from bs4 import BeautifulSoup
 import requests
 
 from . import log
@@ -216,8 +218,11 @@ def get_sky_catalog(
     CIRCLE(COORD1(subquery.propagated_position_vector), COORD2(subquery.propagated_position_vector), {u.Quantity(radius, u.deg).value}))
     ORDER BY ang_sep ASC
     """
+    # print(query_str)
     job = Gaia.launch_job_async(query_str, verbose=False)
+    # print(job)
     tbl = job.get_results()
+    # print(tbl)
     if len(tbl) == 0:
         raise ValueError("Could not find matches.")
     plx = tbl["parallax"].value.filled(fill_value=0)
@@ -241,7 +246,7 @@ def get_sky_catalog(
             dec=tbl["dec"].value.data * u.deg,
             pm_ra_cosdec=tbl["pmra"].value.filled(fill_value=0) * u.mas / u.year,
             pm_dec=tbl["pmdec"].value.filled(fill_value=0) * u.mas / u.year,
-            obstime=Time.strptime("2016", "%Y"),
+            obstime=Time("2457389.0", format="jd", scale="tcb"),  # J2016.0
             distance=Distance(parallax=plx * u.mas, allow_negative=True),
             radial_velocity=tbl["radial_velocity"].value.filled(fill_value=0)
             * u.km
@@ -332,6 +337,16 @@ def get_planets(
 @lru_cache
 def get_citation(bibcode):
     """Goes to NASA ADS and webscrapes the bibtex citation for a given bibcode"""
-    d = requests.get(f"https://ui.adsabs.harvard.edu/abs/{bibcode}/exportcitation")
-    soup = BeautifulSoup(d.content, "html.parser")
-    return soup.find("textarea").text
+    # d = requests.get(f"https://ui.adsabs.harvard.edu/abs/{bibcode}/exportcitation")
+    # soup = BeautifulSoup(d.content, "html.parser")
+    # return soup.find("textarea").text
+    bibcode = bibcode.replace("%26", "&")
+
+    TOKEN = "hJ9iTt3FoysvdBqY6OJ0o7EinrRwyMWJ6ClhnImn"
+    payload = {"bibcode": [bibcode], "sort": "first_author asc"}
+    results = requests.post(
+        "https://api.adsabs.harvard.edu/v1/export/bibtex",
+        headers={"Authorization": "Bearer " + TOKEN},
+        data=json.dumps(payload),
+    )
+    return results.json()["export"]
