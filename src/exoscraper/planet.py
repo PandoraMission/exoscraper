@@ -32,7 +32,7 @@ class Planet(object):
                     self,
                     c,
                     (
-                        self._tab[c].filled(np.nan)
+                        np.ma.MaskedArray(self._tab[c]).filled(np.nan)
                         if isinstance(self._tab[c], u.Quantity)
                         else u.Quantity(self._tab[c])
                     ),
@@ -59,8 +59,10 @@ class Planet(object):
                 attr = getattr(self, "_".join(c.split("_")[:-1]))
                 if isinstance(attr, u.Quantity):
                     if self._tab[c] != "":
-                        ref = self._tab[c].split("href=")[1].split(" target=ref")[0]
+                        ref = str(self._tab[c].split("href=")[1].split(" target=ref")[0])
                         if "ui.adsabs" in ref.lower():
+                            # print(ref.split("abs/")[1].split("/")[0])
+                            # print(ref)
                             ref = get_citation(ref.split("abs/")[1].split("/")[0])
                             setattr(attr, "reference", ref)
                             setattr(
