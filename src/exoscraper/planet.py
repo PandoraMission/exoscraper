@@ -32,7 +32,7 @@ class Planet(object):
                     self,
                     c,
                     (
-                        self._tab[c].filled(np.nan)
+                        np.ma.MaskedArray(self._tab[c]).filled(np.nan)
                         if isinstance(self._tab[c], u.Quantity)
                         else u.Quantity(self._tab[c])
                     ),
@@ -59,8 +59,12 @@ class Planet(object):
                 attr = getattr(self, "_".join(c.split("_")[:-1]))
                 if isinstance(attr, u.Quantity):
                     if self._tab[c] != "":
-                        ref = self._tab[c].split("href=")[1].split(" target=ref")[0]
+                        ref = str(
+                            self._tab[c].split("href=")[1].split(" target=ref")[0]
+                        )
                         if "ui.adsabs" in ref.lower():
+                            # print(ref.split("abs/")[1].split("/")[0])
+                            # print(ref)
                             ref = get_citation(ref.split("abs/")[1].split("/")[0])
                             setattr(attr, "reference", ref)
                             setattr(
@@ -180,6 +184,8 @@ class Planet(object):
             ) ** 0.5 * a
             a.reference = "Calculated"
             self.pl_orbsmax = a
+        elif self.pl_orbsmax.unit is not u.AU:
+            self.pl_orbsmax._unit = u.AU
 
     def _fix_ratdor(self):
         if not np.isfinite(self.pl_ratdor):
@@ -220,14 +226,16 @@ class Planet(object):
                 if isinstance(attr, u.Quantity):
                     if self._tab[c] != "" and not np.isnan(attr.value):
                         reflink = None
-                        if (c[:-4] + "_reflink") in self._tab.columns:
+                        if ((c[:-4] + "_reflink") in self._tab.columns) & (
+                            self._tab[c[:-4] + "_reflink"] != ""
+                        ):
                             reflink = self._tab[c[:-4] + "_reflink"]
                         else:
                             setattr(attr, "reference", None)
-                        if attr.reference == "Calculated" and attr.value != np.nan:
-                            err = attr.err
-                        else:
+                        if hasattr(attr, "err1"):
                             err = max(abs(attr.err1.value), abs(attr.err2.value))
+                        else:
+                            err = attr.err
                         setattr(
                             attr,
                             "distribution",
