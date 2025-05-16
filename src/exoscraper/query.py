@@ -27,7 +27,7 @@ asqlog.setLevel("ERROR")
 
 
 @lru_cache
-def get_SED(coord: Union[str, tuple], radius: Union[float, u.Quantity] = 2) -> dict:
+def get_SED(coord: Union[str, tuple], radius: Union[float, u.Quantity] = 2.0) -> dict:
     """Get the SED data for the target from Vizier
 
     Parameters
@@ -40,6 +40,8 @@ def get_SED(coord: Union[str, tuple], radius: Union[float, u.Quantity] = 2) -> d
 
     if isinstance(radius, u.Quantity):
         radius = radius.to(u.arcsecond).value
+    elif isinstance(radius, (int, float)):
+        radius = float(radius)
     if isinstance(coord, str):
         vizier_url = f"https://vizier.cds.unistra.fr/viz-bin/sed?-c={coord.replace(' ', '%20')}&-c.rs={radius}"
     elif isinstance(coord, tuple):
