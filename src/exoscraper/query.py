@@ -342,7 +342,7 @@ def get_citation(bibcode):
     # return soup.find("textarea").text
     bibcode = bibcode.replace("%26", "&")
 
-    TOKEN = "hJ9iTt3FoysvdBqY6OJ0o7EinrRwyMWJ6ClhnImn"
+    TOKEN = "hAEaZKkVUdJ2sKXHKVUM7WfhyOwbq7uls1p4poUX"
     payload = {"bibcode": [bibcode], "sort": "first_author asc"}
     results = requests.post(
         "https://api.adsabs.harvard.edu/v1/export/bibtex",
