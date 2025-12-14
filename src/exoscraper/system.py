@@ -64,7 +64,9 @@ class System(object):
 
         # Fetching Gaia DR3 values
         if self.offline:
-            self.sky_cat = get_offline_star_catalog(self.ra, self.dec, limit=1, time=time)
+            self.sky_cat = get_offline_star_catalog(
+                self.ra, self.dec, limit=1, time=time
+            )
         else:
             self.sky_cat = get_sky_catalog(self.ra, self.dec, limit=1, time=time)
         self.coord = self.sky_cat["coords"]
@@ -140,20 +142,16 @@ class System(object):
             raise ValueError("`coord` must be a `SkyCoord` or a name string.")
         if offline:
             handle_gaiaoffline_files()
-            cat = get_offline_star_catalog(
-                coord.ra, coord.dec, time=time
-            )
+            cat = get_offline_star_catalog(coord.ra, coord.dec, time=time)
         else:
             try:
                 cat = get_sky_catalog(
                     coord.ra, coord.dec, radius=5 * u.arcsecond, limit=1, time=time
                 )
             except TimeoutError:
-                print('TimeoutError: Trying gaiaoffline query')
+                print("TimeoutError: Trying gaiaoffline query")
                 handle_gaiaoffline_files()
-                cat = get_offline_star_catalog(
-                    coord.ra, coord.dec, time=time
-                )
+                cat = get_offline_star_catalog(coord.ra, coord.dec, time=time)
         if name is None:
             name = cat["source_id"][0]
         return System(
