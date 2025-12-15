@@ -9,6 +9,7 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
 from astropy.time import Time
+import requests
 
 from .query import get_planets, get_SED, get_sky_catalog, get_offline_star_catalog
 from .planet import Planet
@@ -150,6 +151,10 @@ class System(object):
                 )
             except TimeoutError:
                 print("TimeoutError: Trying gaiaoffline query")
+                handle_gaiaoffline_files()
+                cat = get_offline_star_catalog(coord.ra, coord.dec, time=time)
+            except requests.exceptions.HTTPError as http_err:
+                print(f"HTTP error occurred: {http_err}. Trying offline query.")
                 handle_gaiaoffline_files()
                 cat = get_offline_star_catalog(coord.ra, coord.dec, time=time)
         if name is None:
