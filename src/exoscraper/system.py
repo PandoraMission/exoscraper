@@ -134,7 +134,7 @@ class System(object):
         return self.stars[index]
 
     @staticmethod
-    def from_gaia(coord: Union[str, SkyCoord], time=Time.now(), offline=False):
+    def from_gaia(coord: Union[str, SkyCoord], time=Time.now(), offline=True):
         name = None
         if isinstance(coord, str):
             name = coord
