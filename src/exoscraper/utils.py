@@ -72,17 +72,23 @@ def handle_gaiaoffline_files():
         frac = df.status.isin(["completed"]).sum() / len(df)
         track_fracs.update({str(tracker_table_name): frac})
 
-    if track_fracs["file_tracking_gaiadr3"] < 1.0:
+    if ("file_tracking_gaiadr3" not in track_fracs.keys()) or track_fracs[
+        "file_tracking_gaiadr3"
+    ] < 1.0:
         print("Warning: This may take a while.")
         print("Populating Gaia DR3 files for gaiaoffline")
         populate_gaiadr3()
 
-    if track_fracs["file_tracking_tmass_xmatch"] < 1.0:
+    if ("file_tracking_tmass_xmatch" not in track_fracs.keys()) or track_fracs[
+        "file_tracking_tmass_xmatch"
+    ] < 1.0:
         print("Warning: This may take a while.")
         print("Populating 2MASS Xmatch files for gaiaoffline")
         populate_tmass_xmatch()
 
-    if track_fracs["file_tracking_tmass"] < 1.0:
+    if ("file_tracking_tmass" not in track_fracs.keys()) or track_fracs[
+        "file_tracking_tmass"
+    ] < 1.0:
         print("Warning: This may take a while.")
         print("Populating 2MASS files for gaiaoffline")
         populate_tmass()
