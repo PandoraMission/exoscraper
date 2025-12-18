@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "exoscraper"
-version = "0.2.0"
+version = "0.2.1"
 description = "Package to scrape data on exoplanet targets to help you build your mission."
 authors = ["Your Name <you@example.com>"]
 license = "MIT"
