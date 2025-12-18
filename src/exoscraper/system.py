@@ -9,11 +9,12 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
 from astropy.time import Time
+import requests
 
-from .query import get_planets, get_SED, get_sky_catalog
+from .query import get_planets, get_SED, get_sky_catalog, get_offline_star_catalog
 from .planet import Planet
 from .star import Star
-from .utils import get_batman_model
+from .utils import get_batman_model, handle_gaiaoffline_files
 
 
 class System(object):
@@ -38,15 +39,21 @@ class System(object):
         bmag: Union[u.Quantity, None] = None,
         jmag: Union[u.Quantity, None] = None,
         time: Time = Time.now(),
+        offline: bool = True,
     ):
         """Ensures quantity conventions, generates Planet and Star classes, and validates input"""
         if all(x is None for x in [name, ra, dec, coord]):
             raise ValueError("Coordinate or name must be provided!")
         self.name, self.coord, self.bmag, self.jmag = (name, coord, bmag, jmag)
-        self.ra, self.dec = u.Quantity(ra, u.deg), u.Quantity(dec, u.deg)
-        self.teff = u.Quantity(teff, u.K)
-        self.logg = u.Quantity(logg)
+        # self.ra, self.dec = u.Quantity(ra, u.deg), u.Quantity(dec, u.deg)
+        # self.teff = u.Quantity(teff, u.K)
+        # self.logg = u.Quantity(logg)
+        self.ra = ra
+        self.dec = dec
+        self.teff = teff
+        self.logg = logg
         self.coord = coord
+        self.offline = offline
 
         # Processing RA and Dec input
         if self.ra is None and self.dec is None:
@@ -57,7 +64,12 @@ class System(object):
             )
 
         # Fetching Gaia DR3 values
-        self.sky_cat = get_sky_catalog(self.ra, self.dec, limit=1, time=time)
+        if self.offline:
+            self.sky_cat = get_offline_star_catalog(
+                self.ra, self.dec, limit=1, time=time
+            )
+        else:
+            self.sky_cat = get_sky_catalog(self.ra, self.dec, limit=1, time=time)
         self.coord = self.sky_cat["coords"]
 
         # Fetching any planets from the system
@@ -122,17 +134,29 @@ class System(object):
         return self.stars[index]
 
     @staticmethod
-    def from_gaia(coord: Union[str, SkyCoord], time=Time.now()):
+    def from_gaia(coord: Union[str, SkyCoord], time=Time.now(), offline=True):
         name = None
         if isinstance(coord, str):
             name = coord
             coord = SkyCoord.from_name(coord)
         elif not isinstance(coord, SkyCoord):
             raise ValueError("`coord` must be a `SkyCoord` or a name string.")
-        # print(coord)
-        cat = get_sky_catalog(
-            coord.ra, coord.dec, radius=5 * u.arcsecond, limit=1, time=time
-        )
+        if offline:
+            handle_gaiaoffline_files()
+            cat = get_offline_star_catalog(coord.ra, coord.dec, time=time)
+        else:
+            try:
+                cat = get_sky_catalog(
+                    coord.ra, coord.dec, radius=5 * u.arcsecond, limit=1, time=time
+                )
+            except TimeoutError:
+                print("TimeoutError: Trying gaiaoffline query")
+                handle_gaiaoffline_files()
+                cat = get_offline_star_catalog(coord.ra, coord.dec, time=time)
+            except requests.exceptions.HTTPError as http_err:
+                print(f"HTTP error occurred: {http_err}. Trying offline query.")
+                handle_gaiaoffline_files()
+                cat = get_offline_star_catalog(coord.ra, coord.dec, time=time)
         if name is None:
             name = cat["source_id"][0]
         return System(
